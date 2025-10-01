@@ -544,11 +544,15 @@ function formatPlateNumber(text) {
   return text;
 }
 
-function showVerificationModal(extracted, photo) {
+function showVerificationModal(extracted, photo, method = '') {
   const formatted = formatPlateNumber(extracted);
   
   document.getElementById('extractedText').parentElement.style.display = 'block';
   document.getElementById('extractedText').textContent = formatted || 'None detected';
+  
+  // Add method indicator
+  const methodIndicator = method ? ` (${method})` : '';
+  document.getElementById('extractedText').textContent += methodIndicator;
   
   document.getElementById('plateInput').value = formatted;
   document.getElementById('verificationModal').classList.add('active');
