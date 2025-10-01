@@ -126,8 +126,8 @@
       <div id="listPagesStatus" class="status-bar" style="display:none;">
         Pages captured: <span id="pageCount">0</span>
       </div>
-      <button id="clearPagesBtn" class="btn btn-warning" style="display:none;" onclick="clearCapturedPages()">🗑️ Clear Pages</button>
       <button id="processListBtn" class="btn btn-success" style="display:none;" onclick="processAllPages()">✅ Process All Pages</button>
+      <button id="clearPagesBtn" class="btn btn-warning" style="display:none;" onclick="clearCapturedPages()">🗑️ Clear Pages</button>
     </div>
 
     <!-- Tables Screen -->
@@ -183,6 +183,23 @@
       
     </div>
 
+    <!-- Expected List Results Screen -->
+    <div id="expectedResultsScreen" class="screen">
+      <div class="header">
+        <button class="back-arrow" onclick="showScreen('homeScreen')">←</button>
+        <h1>📝 Cars Recorded</h1>
+      </div>
+      
+      <div class="card">
+        <h2 style="text-align: center; color: #4FC3F7; margin-bottom: 20px;">
+          Total: <span id="totalRecorded" style="font-size: 32px; font-weight: bold;">0</span> cars
+        </h2>
+        <div id="recordedList" style="font-size: 18px; line-height: 2;"></div>
+        <button class="btn btn-success" onclick="confirmExpectedList()" style="margin-top: 20px;">✅ Confirm & Save</button>
+        <button class="btn btn-warning" onclick="retryExpectedScan()" style="margin-top: 10px;">🔄 Retry Scan</button>
+      </div>
+    </div>
+
   </div>
 
   <!-- Loading Screen -->
@@ -212,6 +229,7 @@ let db = {
   keys: [],
   expected: [],
   listPages: [],
+  tempExpectedList: [], // Temporary storage for scanned expected list before confirmation
   apiUsage: {
     plateRecognizer: 0,
     googleVision: 0
@@ -704,22 +722,66 @@ async function processAllPages() {
   
   for (let i = 0; i < db.listPages.length; i++) {
     try {
-      const result = await Tesseract.recognize(db.listPages[i], 'eng', {
-        tessedit_char_whitelist: '0123456789-',
-        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
-        preserve_interword_spaces: '0'
+      // Use Google Vision API for better OCR on printed text
+      const base64Image = db.listPages[i].split(',')[1];
+      
+      const visionResponse = await fetch('https://vision.googleapis.com/v1/images:annotate?key=AIzaSyC5cNydQGbKVMQ5h06H8bxWgvGYo6jeeFk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64Image },
+            features: [{ type: 'DOCUMENT_TEXT_DETECTION' }]
+          }]
+        })
       });
-      const text = result.data.text;
-      console.log(`Page ${i + 1} OCR result:`, text);
+      
+      const visionData = await visionResponse.json();
+      console.log(`Page ${i + 1} Google Vision response:`, visionData);
+      
+      let text = '';
+      if (visionData.responses && visionData.responses[0].fullTextAnnotation) {
+        text = visionData.responses[0].fullTextAnnotation.text;
+        console.log(`Page ${i + 1} extracted text:`, text);
+      }
+      
+      // Process the text to find plate numbers
       const lines = text.split('\n');
       
       lines.forEach(line => {
-        let cleaned = line.replace(/[^0-9]/g, '');
-        if (cleaned.length >= 8) {
-          let formatted = formatPlateNumber(cleaned);
-          if (validatePlateFormat(formatted) && !allPlates.includes(formatted)) {
-            allPlates.push(formatted);
-            console.log(`Found valid plate: ${formatted}`);
+        // Remove all non-digits and non-hyphens
+        let cleaned = line.trim();
+        
+        // Look for pattern XXX-XX-XXX or XXXXXXXXX
+        const patterns = [
+          /(\d{3})-(\d{2})-(\d{3})/g,  // Already formatted
+          /(\d{3})[\s-]?(\d{2})[\s-]?(\d{3})/g  // With various separators
+        ];
+        
+        patterns.forEach(pattern => {
+          const matches = cleaned.matchAll(pattern);
+          for (const match of matches) {
+            let plate = match[1] + match[2] + match[3];
+            let formatted = formatPlateNumber(plate);
+            if (validatePlateFormat(formatted) && !allPlates.includes(formatted)) {
+              allPlates.push(formatted);
+              console.log(`Found valid plate: ${formatted}`);
+            }
+          }
+        });
+        
+        // Also try extracting just 8 consecutive digits
+        let digitsOnly = cleaned.replace(/[^0-9]/g, '');
+        if (digitsOnly.length >= 8) {
+          for (let j = 0; j <= digitsOnly.length - 8; j++) {
+            let candidate = digitsOnly.substring(j, j + 8);
+            let formatted = formatPlateNumber(candidate);
+            if (validatePlateFormat(formatted) && !allPlates.includes(formatted) && candidate[0] !== '0') {
+              allPlates.push(formatted);
+              console.log(`Found valid plate from digits: ${formatted}`);
+            }
           }
         }
       });
@@ -728,27 +790,62 @@ async function processAllPages() {
     }
   }
   
-  allPlates.forEach(plate => {
-    if (!db.expected.some(item => item.plate === plate)) {
-      const item = {
-        plate: plate,
-        timestamp: new Date().toLocaleString(),
-        photo: null
-      };
+  showLoading(false);
+  
+  if (allPlates.length === 0) {
+    alert('❌ No valid plate numbers found. Please try again with a clearer image.');
+    return;
+  }
+  
+  // Store in temporary list
+  db.tempExpectedList = allPlates.map(plate => ({
+    plate: plate,
+    timestamp: new Date().toLocaleString(),
+    photo: null
+  }));
+  
+  // Show results screen
+  showExpectedResults(allPlates);
+}
+
+function showExpectedResults(plates) {
+  document.getElementById('totalRecorded').textContent = plates.length;
+  
+  const listHtml = plates.map((plate, index) => 
+    `<div style="padding: 10px; margin: 5px 0; background: #e3f2fd; border-radius: 5px;">
+      ${index + 1}. ${plate}
+    </div>`
+  ).join('');
+  
+  document.getElementById('recordedList').innerHTML = listHtml;
+  showScreen('expectedResultsScreen');
+}
+
+function confirmExpectedList() {
+  // Move from temp to actual expected list
+  db.tempExpectedList.forEach(item => {
+    if (!db.expected.some(existing => existing.plate === item.plate)) {
       db.expected.push(item);
     }
   });
   
+  const count = db.tempExpectedList.length;
+  db.tempExpectedList = [];
+  
+  // Clear the captured pages
+  db.listPages = [];
+  
   saveDataToStorage();
   updateTables();
   
-  showLoading(false);
-  const pagesProcessed = db.listPages.length;
-  db.listPages = [];
-  saveDataToStorage();
-  updatePageCount();
-  alert(`✅ Processed ${allPlates.length} plates from ${pagesProcessed} pages`);
-  stopScanning();
+  alert(`✅ Successfully added ${count} plates to expected inventory!`);
+  showScreen('homeScreen');
+}
+
+function retryExpectedScan() {
+  db.tempExpectedList = [];
+  showScreen('scanScreen');
+  startScanning('list');
 }
 
 function updateTables() {
