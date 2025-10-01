@@ -14,7 +14,19 @@
     .screen.active { display: block; }
     .header { background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
     .header h1 { color: #333; font-size: 24px; text-align: center; }
-    .back-arrow { position: absolute; top: 20px; left: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #333; padding: 5px; }
+    .back-arrow { 
+      position: absolute; 
+      top: 15px; 
+      left: 15px; 
+      background: linear-gradient(45deg, #9c27b0, #7b1fa2); 
+      color: white; 
+      border: none; 
+      padding: 8px 12px; 
+      border-radius: 8px; 
+      font-size: 16px; 
+      cursor: pointer; 
+      box-shadow: 0 3px 10px rgba(156,39,176,0.3);
+    }
     .btn { background: linear-gradient(45deg, #4FC3F7, #29B6F6); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; width: 100%; margin: 10px 0; box-shadow: 0 5px 15px rgba(79,195,247,0.3); transition: transform 0.2s; }
     .btn:hover { transform: translateY(-2px); }
     .btn-secondary { background: linear-gradient(45deg, #9c27b0, #7b1fa2); }
@@ -79,14 +91,6 @@
     <div id="homeScreen" class="screen active">
       <div class="header">
         <h1>🚗 Car Inventory System</h1>
-      </div>
-      
-      <div class="toggle-container">
-        <span>Save Photos:</span>
-        <label class="toggle">
-          <input type="checkbox" id="savePhotosToggle" checked>
-          <span class="toggle-slider"></span>
-        </label>
       </div>
 
       <button class="btn" onclick="startScanning('cars')">📷 Scan Physical Cars</button>
@@ -246,11 +250,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 let currentScanType = '';
 let stream = null;
-let savePhotos = false;
-
-document.getElementById('savePhotosToggle').addEventListener('change', (e) => {
-  savePhotos = e.target.checked;
-});
 
 function showScreen(screenId) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -638,7 +637,7 @@ function savePlate(plate) {
   const item = {
     plate: plate,
     timestamp: new Date().toLocaleString(),
-    photo: savePhotos ? photo : null
+    photo: photo // Always save photos now
   };
   
   addToDatabase(table, item);
