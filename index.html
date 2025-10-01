@@ -84,13 +84,11 @@
         <h1>🚗 Car Inventory System</h1>
       </div>
 
-      <button class="btn" onclick="startScanning('cars')">📷 Scan Physical Cars</button>
+      <button class="btn" onclick="startScanning('cars')">🚗 Scan Physical Cars</button>
       <button class="btn" onclick="startScanning('keys')">🔑 Scan Physical Keys</button>
       
-      <button class="btn btn-secondary" onclick="showScreen('tablesScreen')">📊 View Tables</button>
       <button class="btn btn-success" onclick="generateReport()">📈 Reconciliation Report</button>
-      <button class="btn btn-danger" onclick="exportToExcel()">📥 Export to Excel</button>
-      <button class="btn" onclick="clearAllData()" style="background: linear-gradient(45deg, #666, #444);">🗑️ Clear All Data</button>
+      <button class="btn btn-secondary" onclick="showScreen('tablesScreen')">📊 View Tables</button>
       <input type="file" id="fileUpload" accept=".pdf,.xlsx,.xls,.csv,.txt" style="display:none;" onchange="handleFileUpload(event)">
     </div>
 
@@ -118,7 +116,10 @@
       </div>
       
       <div class="card">
-        <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
+          <button class="btn btn-danger" onclick="discardSection('cars')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
+        </div>
         <input type="text" id="searchCars" placeholder="Search cars..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="carsTable">
@@ -129,7 +130,10 @@
       </div>
 
       <div class="card">
-        <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
+          <button class="btn btn-danger" onclick="discardSection('keys')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
+        </div>
         <input type="text" id="searchKeys" placeholder="Search keys..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="keysTable">
@@ -140,7 +144,10 @@
       </div>
 
       <div class="card">
-        <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
+          <button class="btn btn-danger" onclick="discardSection('expected')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
+        </div>
         <input type="text" id="searchExpected" placeholder="Search expected..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="expectedTable">
@@ -162,11 +169,15 @@
         <div style="font-size: 18px; line-height: 2; margin: 20px 0;">
           <p><strong>Cars Found:</strong> <span id="reportCarsCount">0</span></p>
           <p><strong>Keys Found:</strong> <span id="reportKeysCount">0</span></p>
-          <p id="expectedStatus"><strong>Total Expected:</strong> <span id="reportExpectedCount">0</span> <span id="readyStatus" style="color: #f44336; font-weight: bold;">(Not Ready)</span></p>
+          <p id="expectedStatus">
+            <strong>Total Expected:</strong> <span id="reportExpectedCount">0</span> 
+            <span id="readyStatus" style="color: #f44336; font-weight: bold;">(Not Ready)</span>
+            <button id="discardBtn" onclick="discardExpectedList()" style="display: none; padding: 6px 12px; font-size: 13px; margin-left: 10px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️ Discard</button>
+          </p>
         </div>
         
         <div id="uploadSection">
-          <button class="btn" onclick="document.getElementById('fileUpload').click()" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (PDF/Excel/CSV)</button>
+          <button id="uploadBtn" class="btn" onclick="uploadExpectedList()" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button>
         </div>
         
         <div id="compareSection" style="display: none; margin-top: 20px;">
@@ -659,6 +670,42 @@ function deleteEntry(tableId, index) {
   }
 }
 
+function uploadExpectedList() {
+  document.getElementById('fileUpload').click();
+}
+
+function discardExpectedList() {
+  if (confirm('⚠️ Are you sure you want to discard the expected list with ' + db.expected.length + ' plates?')) {
+    db.expected = [];
+    saveDataToStorage();
+    updateTables();
+    alert('✅ Expected list discarded');
+    generateReport();
+  }
+}
+
+function discardSection(section) {
+  const sectionNames = {
+    'cars': 'Physical Cars',
+    'keys': 'Physical Keys',
+    'expected': 'Expected Inventory'
+  };
+  
+  const count = db[section].length;
+  
+  if (count === 0) {
+    alert('Nothing to discard - this section is already empty!');
+    return;
+  }
+  
+  if (confirm(`⚠️ Are you sure you want to discard ALL ${sectionNames[section]}?\n\nThis will delete ${count} entries permanently.`)) {
+    db[section] = [];
+    saveDataToStorage();
+    updateTables();
+    alert(`✅ ${sectionNames[section]} discarded (${count} entries deleted)`);
+  }
+}
+
 function generateReport() {
   document.getElementById('reportCarsCount').textContent = db.cars.length;
   document.getElementById('reportKeysCount').textContent = db.keys.length;
@@ -667,15 +714,25 @@ function generateReport() {
   const readyStatusEl = document.getElementById('readyStatus');
   const compareSection = document.getElementById('compareSection');
   const resultsSection = document.getElementById('resultsSection');
+  const discardBtn = document.getElementById('discardBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
   
   if (db.expected.length > 0) {
     readyStatusEl.textContent = '(Ready)';
     readyStatusEl.style.color = '#4caf50';
     compareSection.style.display = 'block';
+    discardBtn.style.display = 'inline-block';
+    uploadBtn.disabled = true;
+    uploadBtn.style.cursor = 'not-allowed';
+    uploadBtn.style.opacity = '0.5';
   } else {
     readyStatusEl.textContent = '(Not Ready)';
     readyStatusEl.style.color = '#f44336';
     compareSection.style.display = 'none';
+    discardBtn.style.display = 'none';
+    uploadBtn.disabled = false;
+    uploadBtn.style.cursor = 'pointer';
+    uploadBtn.style.opacity = '1';
   }
   
   resultsSection.style.display = 'none';
@@ -996,27 +1053,6 @@ function exportToExcel() {
   XLSX.utils.book_append_sheet(wb, expectedWS, 'Expected Inventory');
   
   XLSX.writeFile(wb, `CarInventory_${new Date().toISOString().split('T')[0]}.xlsx`);
-}
-
-function clearAllData() {
-  if (confirm('⚠️ This will delete ALL scanned data. Are you sure?')) {
-    if (confirm('🚨 This cannot be undone! Delete everything?')) {
-      db = {
-        cars: [],
-        keys: [],
-        expected: [],
-        tempExpectedList: [],
-        apiUsage: {
-          plateRecognizer: 0,
-          googleVision: 0
-        }
-      };
-      
-      localStorage.removeItem('carInventoryData');
-      updateTables();
-      alert('✅ All data cleared');
-    }
-  }
 }
 
 document.getElementById('searchCars')?.addEventListener('input', (e) => filterTable('carsTable', e.target.value));
