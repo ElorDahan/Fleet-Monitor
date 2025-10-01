@@ -271,7 +271,41 @@ function saveDataToStorage() {
 // Load data when page starts
 document.addEventListener('DOMContentLoaded', function() {
   loadDataFromStorage();
+  setupBackButtonHandler();
 });
+
+// Handle phone's back button
+function setupBackButtonHandler() {
+  // Add a dummy state to history when app loads
+  window.history.pushState({ page: 'home' }, '', '');
+  
+  // Listen for back button
+  window.addEventListener('popstate', function(event) {
+    event.preventDefault();
+    
+    // Get current active screen
+    const activeScreen = document.querySelector('.screen.active');
+    const activeScreenId = activeScreen ? activeScreen.id : 'homeScreen';
+    
+    // Handle based on current screen
+    if (activeScreenId === 'homeScreen') {
+      // Already at home, let browser handle it (will exit app)
+      return;
+    } else if (activeScreenId === 'scanScreen') {
+      // Stop scanning and go home
+      stopScanning();
+    } else if (activeScreenId === 'expectedResultsScreen') {
+      // Go back to home
+      showScreen('homeScreen');
+    } else {
+      // Any other screen, go back to home
+      showScreen('homeScreen');
+    }
+    
+    // Push state again to keep back button working
+    window.history.pushState({ page: 'current' }, '', '');
+  });
+}
 
 let currentScanType = '';
 let stream = null;
