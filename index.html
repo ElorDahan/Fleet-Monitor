@@ -343,6 +343,14 @@ async function capturePhoto() {
   if (currentScanType === 'list') {
     db.listPages.push(originalImage);
     updatePageCount();
+    
+    // Flash feedback to show photo was captured
+    const videoElement = document.getElementById('videoElement');
+    videoElement.style.border = '5px solid #4caf50';
+    setTimeout(() => {
+      videoElement.style.border = 'none';
+    }, 300);
+    
     return;
   }
   
@@ -651,22 +659,26 @@ async function processAllPages() {
   for (let i = 0; i < db.listPages.length; i++) {
     try {
       const result = await Tesseract.recognize(db.listPages[i], 'eng', {
-        tessedit_char_whitelist: '0123456789'
+        tessedit_char_whitelist: '0123456789-',
+        tessedit_pageseg_mode: Tesseract.PSM.AUTO,
+        preserve_interword_spaces: '0'
       });
       const text = result.data.text;
+      console.log(`Page ${i + 1} OCR result:`, text);
       const lines = text.split('\n');
       
       lines.forEach(line => {
-        let cleaned = line.replace(/\D/g, '');
+        let cleaned = line.replace(/[^0-9]/g, '');
         if (cleaned.length >= 8) {
           let formatted = formatPlateNumber(cleaned);
           if (validatePlateFormat(formatted) && !allPlates.includes(formatted)) {
             allPlates.push(formatted);
+            console.log(`Found valid plate: ${formatted}`);
           }
         }
       });
     } catch (err) {
-      console.error('Error processing page', i, err);
+      console.error('Error processing page', i + 1, err);
     }
   }
   
@@ -685,8 +697,60 @@ async function processAllPages() {
   const pagesProcessed = db.listPages.length;
   db.listPages = [];
   updatePageCount();
-  alert(`✅ Processed ${allPlates.length} plates from ${pagesProcessed} pages`);
+  
+  // Show detailed results modal
+  showListProcessingResults(allPlates, pagesProcessed);
   stopScanning();
+}
+
+function showListProcessingResults(foundPlates, pagesCount) {
+  const modal = document.createElement('div');
+  modal.className = 'modal active';
+  modal.innerHTML = `
+    <div class="modal-content" style="max-width: 600px;">
+      <h3>List Processing Results</h3>
+      <p><strong>Pages scanned:</strong> ${pagesCount}</p>
+      <p><strong>Valid plates found:</strong> ${foundPlates.length}</p>
+      
+      ${foundPlates.length > 0 ? `
+        <div style="margin: 15px 0;">
+          <h4 style="color: #4caf50;">Successfully detected:</h4>
+          <div style="max-height: 200px; overflow-y: auto; background: #f5f5f5; padding: 10px; border-radius: 5px;">
+            ${foundPlates.map(plate => `<div style="padding: 2px 0;">✓ ${plate}</div>`).join('')}
+          </div>
+        </div>
+      ` : `
+        <div style="margin: 15px 0; color: #f44336;">
+          <h4>No valid plates detected</h4>
+          <p>Try taking clearer photos with better lighting, or ensure the text is clearly visible.</p>
+        </div>
+      `}
+      
+      <div style="display: flex; gap: 10px; margin-top: 20px;">
+        <button class="btn btn-success" onclick="document.body.removeChild(this.closest('.modal')); updateTables();" style="flex: 1;">
+          Add ${foundPlates.length} to Expected List
+        </button>
+        <button class="btn btn-secondary" onclick="document.body.removeChild(this.closest('.modal'));" style="flex: 1;">
+          Cancel
+        </button>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(modal);
+  
+  // Add the plates to database
+  foundPlates.forEach(plate => {
+    if (!db.expected.some(item => item.plate === plate)) {
+      const item = {
+        plate: plate,
+        timestamp: new Date().toLocaleString(),
+        photo: null
+      };
+      addToDatabase('expected', item);
+    }
+  });
+}
 }
 
 function updateTables() {
