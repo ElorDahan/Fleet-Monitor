@@ -189,7 +189,6 @@
       <input type="text" id="plateInput" placeholder="123-45-678" maxlength="10" inputmode="numeric">
       <div class="modal-buttons">
         <button class="btn btn-success" onclick="confirmPlate()">✓ OK</button>
-        <button class="btn btn-secondary" onclick="fixPlate()">✏️ Enter Manually</button>
         <button class="btn btn-warning" onclick="retakePhoto()">📸 Retake</button>
         <button class="btn" onclick="cancelScan()" style="background: linear-gradient(45deg, #666, #444);">❌ Cancel</button>
       </div>
@@ -544,15 +543,11 @@ function formatPlateNumber(text) {
   return text;
 }
 
-function showVerificationModal(extracted, photo, method = '') {
+function showVerificationModal(extracted, photo) {
   const formatted = formatPlateNumber(extracted);
   
   document.getElementById('extractedText').parentElement.style.display = 'block';
   document.getElementById('extractedText').textContent = formatted || 'None detected';
-  
-  // Add method indicator
-  const methodIndicator = method ? ` (${method})` : '';
-  document.getElementById('extractedText').textContent += methodIndicator;
   
   document.getElementById('plateInput').value = formatted;
   document.getElementById('verificationModal').classList.add('active');
