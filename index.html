@@ -6,6 +6,11 @@
   <title>Car Inventory App</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script>
+    // Set up PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
@@ -98,7 +103,9 @@
 
       <button class="btn" onclick="startScanning('cars')">📷 Scan Physical Cars</button>
       <button class="btn" onclick="startScanning('keys')">🔑 Scan Physical Keys</button>
-      <button class="btn" onclick="startScanning('list')">📝 Scan Expected List</button>
+      <button class="btn" onclick="startScanning('list')">📝 Scan Expected List (Camera)</button>
+      <button class="btn" onclick="document.getElementById('fileUpload').click()" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (PDF/Excel)</button>
+      <input type="file" id="fileUpload" accept=".pdf,.xlsx,.xls,.csv,.txt" style="display:none;" onchange="handleFileUpload(event)">
       
       <button class="btn btn-secondary" onclick="showScreen('tablesScreen')">📊 View Tables</button>
       <button class="btn btn-success" onclick="generateReport()">📈 Reconciliation Report</button>
@@ -846,6 +853,149 @@ function retryExpectedScan() {
   db.tempExpectedList = [];
   showScreen('scanScreen');
   startScanning('list');
+}
+
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  showLoading(true);
+  document.querySelector('.loading-text').textContent = '📄 Reading file...\nExtracting plate numbers...';
+  
+  const fileName = file.name.toLowerCase();
+  let allPlates = [];
+  
+  try {
+    if (fileName.endsWith('.pdf')) {
+      allPlates = await extractFromPDF(file);
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      allPlates = await extractFromExcel(file);
+    } else if (fileName.endsWith('.csv')) {
+      allPlates = await extractFromCSV(file);
+    } else if (fileName.endsWith('.txt')) {
+      allPlates = await extractFromText(file);
+    } else {
+      showLoading(false);
+      alert('❌ Unsupported file format. Please use PDF, Excel, CSV, or TXT files.');
+      event.target.value = ''; // Reset file input
+      return;
+    }
+    
+    showLoading(false);
+    
+    if (allPlates.length === 0) {
+      alert('❌ No valid plate numbers found in the file.');
+      event.target.value = '';
+      return;
+    }
+    
+    // Store in temporary list
+    db.tempExpectedList = allPlates.map(plate => ({
+      plate: plate,
+      timestamp: new Date().toLocaleString(),
+      photo: null
+    }));
+    
+    // Show results screen
+    showExpectedResults(allPlates);
+    
+  } catch (error) {
+    showLoading(false);
+    console.error('Error reading file:', error);
+    alert('❌ Error reading file: ' + error.message);
+  }
+  
+  // Reset file input
+  event.target.value = '';
+}
+
+async function extractFromPDF(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+  
+  let allText = '';
+  
+  // Extract text from all pages
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    allText += pageText + '\n';
+  }
+  
+  console.log('Extracted PDF text:', allText);
+  return extractPlatesFromText(allText);
+}
+
+async function extractFromExcel(file) {
+  const arrayBuffer = await file.arrayBuffer();
+  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+  
+  let allPlates = [];
+  
+  // Read all sheets
+  workbook.SheetNames.forEach(sheetName => {
+    const worksheet = workbook.Sheets[sheetName];
+    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+    
+    // Process each cell
+    data.forEach(row => {
+      row.forEach(cell => {
+        if (cell) {
+          const cellText = String(cell);
+          const plates = extractPlatesFromText(cellText);
+          allPlates.push(...plates);
+        }
+      });
+    });
+  });
+  
+  // Remove duplicates
+  return [...new Set(allPlates)];
+}
+
+async function extractFromCSV(file) {
+  const text = await file.text();
+  return extractPlatesFromText(text);
+}
+
+async function extractFromText(file) {
+  const text = await file.text();
+  return extractPlatesFromText(text);
+}
+
+function extractPlatesFromText(text) {
+  const plates = [];
+  const lines = text.split('\n');
+  
+  lines.forEach(line => {
+    // Look for pattern XXX-XX-XXX
+    const hyphenPattern = /(\d{3})-(\d{2})-(\d{3})/g;
+    let match;
+    while ((match = hyphenPattern.exec(line)) !== null) {
+      const plate = match[1] + match[2] + match[3];
+      const formatted = formatPlateNumber(plate);
+      if (validatePlateFormat(formatted) && !plates.includes(formatted)) {
+        plates.push(formatted);
+      }
+    }
+    
+    // Also look for 8 consecutive digits
+    const digitsOnly = line.replace(/[^0-9]/g, '');
+    if (digitsOnly.length >= 8) {
+      for (let i = 0; i <= digitsOnly.length - 8; i++) {
+        const candidate = digitsOnly.substring(i, i + 8);
+        if (candidate[0] !== '0') {
+          const formatted = formatPlateNumber(candidate);
+          if (validatePlateFormat(formatted) && !plates.includes(formatted)) {
+            plates.push(formatted);
+          }
+        }
+      }
+    }
+  });
+  
+  return plates;
 }
 
 function updateTables() {
