@@ -125,7 +125,7 @@
           <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
           <button class="btn btn-danger" onclick="discardSection('cars')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
         </div>
-        <input type="text" id="searchCars" placeholder="Search cars..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="carsTable">
             <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -139,7 +139,7 @@
           <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
           <button class="btn btn-danger" onclick="discardSection('keys')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
         </div>
-        <input type="text" id="searchKeys" placeholder="Search keys..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="keysTable">
             <thead><tr><th>Key Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -153,7 +153,7 @@
           <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
           <button class="btn btn-danger" onclick="discardSection('expected')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
         </div>
-        <input type="text" id="searchExpected" placeholder="Search expected..." style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="expectedTable">
             <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -772,11 +772,20 @@ function performComparison() {
     const hasCar = carPlates.has(plate);
     const hasKey = keyPlates.has(plate);
     
+    let status = 'Complete';
+    if (!hasCar && !hasKey) {
+      status = 'Incomplete (missing both)';
+    } else if (!hasCar) {
+      status = 'Incomplete (missing car)';
+    } else if (!hasKey) {
+      status = 'Incomplete (missing key)';
+    }
+    
     const result = {
       plate: plate,
       car: hasCar ? '✓' : '✗',
       key: hasKey ? '✓' : '✗',
-      status: (hasCar && hasKey) ? 'Complete' : 'Incomplete'
+      status: status
     };
     fullResults.push(result);
     
@@ -1060,9 +1069,41 @@ function exportToExcel() {
   XLSX.writeFile(wb, `CarInventory_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
-document.getElementById('searchCars')?.addEventListener('input', (e) => filterTable('carsTable', e.target.value));
-document.getElementById('searchKeys')?.addEventListener('input', (e) => filterTable('keysTable', e.target.value));
-document.getElementById('searchExpected')?.addEventListener('input', (e) => filterTable('expectedTable', e.target.value));
+document.getElementById('searchCars')?.addEventListener('input', (e) => {
+  formatSearchInput(e);
+  filterTable('carsTable', e.target.value);
+});
+
+document.getElementById('searchKeys')?.addEventListener('input', (e) => {
+  formatSearchInput(e);
+  filterTable('keysTable', e.target.value);
+});
+
+document.getElementById('searchExpected')?.addEventListener('input', (e) => {
+  formatSearchInput(e);
+  filterTable('expectedTable', e.target.value);
+});
+
+function formatSearchInput(e) {
+  let value = e.target.value.replace(/\D/g, '');
+  
+  if (value.length > 8) {
+    value = value.substring(0, 8);
+  }
+  
+  let formatted = '';
+  if (value.length > 0) {
+    formatted = value.substring(0, 3);
+  }
+  if (value.length >= 4) {
+    formatted += '-' + value.substring(3, 5);
+  }
+  if (value.length >= 6) {
+    formatted += '-' + value.substring(5, 8);
+  }
+  
+  e.target.value = formatted;
+}
 
 function filterTable(tableId, query) {
   const table = document.getElementById(tableId);
