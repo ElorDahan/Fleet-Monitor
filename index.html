@@ -185,8 +185,8 @@
           <button id="uploadBtn" class="btn" onclick="uploadExpectedList()" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button>
         </div>
         
-        <div id="compareSection" style="display: none; margin-top: 20px;">
-          <button class="btn btn-success" onclick="runComparison()">🔍 Compare</button>
+        <div id="compareSection" style="margin-top: 20px;">
+          <button id="compareBtn" class="btn btn-success" onclick="attemptComparison()">🔍 Compare</button>
         </div>
         
         <div id="resultsSection" style="display: none; margin-top: 30px;">
@@ -724,31 +724,43 @@ function generateReport() {
   document.getElementById('reportExpectedCount').textContent = db.expected.length;
   
   const readyStatusEl = document.getElementById('readyStatus');
-  const compareSection = document.getElementById('compareSection');
   const resultsSection = document.getElementById('resultsSection');
   const discardBtn = document.getElementById('discardBtn');
   const uploadBtn = document.getElementById('uploadBtn');
+  const compareBtn = document.getElementById('compareBtn');
   
   if (db.expected.length > 0) {
     readyStatusEl.textContent = '(Ready)';
     readyStatusEl.style.color = '#4caf50';
-    compareSection.style.display = 'block';
     discardBtn.style.display = 'inline-block';
     uploadBtn.disabled = true;
     uploadBtn.style.cursor = 'not-allowed';
     uploadBtn.style.opacity = '0.5';
+    compareBtn.disabled = false;
+    compareBtn.style.cursor = 'pointer';
+    compareBtn.style.opacity = '1';
   } else {
     readyStatusEl.textContent = '(Not Ready)';
     readyStatusEl.style.color = '#f44336';
-    compareSection.style.display = 'none';
     discardBtn.style.display = 'none';
     uploadBtn.disabled = false;
     uploadBtn.style.cursor = 'pointer';
     uploadBtn.style.opacity = '1';
+    compareBtn.disabled = true;
+    compareBtn.style.cursor = 'not-allowed';
+    compareBtn.style.opacity = '0.5';
   }
   
   resultsSection.style.display = 'none';
   showScreen('reportScreen');
+}
+
+function attemptComparison() {
+  if (db.expected.length === 0) {
+    alert('📄 Please upload expected list before comparing');
+    return;
+  }
+  runComparison();
 }
 
 function runComparison() {
