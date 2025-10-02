@@ -166,7 +166,7 @@
     <div id="reportScreen" class="screen">
       <div class="header">
         <button class="back-arrow" onclick="showScreen('homeScreen')">←</button>
-        <h1>📈 Reconciliation Report</h1>
+        <h1>📊 Inventory Check</h1>
       </div>
       
       <div class="card">
@@ -186,7 +186,7 @@
         </div>
         
         <div id="compareSection" style="margin-top: 20px;">
-          <button id="compareBtn" class="btn btn-success" onclick="attemptComparison()">🔍 Compare</button>
+          <button id="compareBtn" class="btn btn-success" onclick="attemptComparison()" style="cursor: pointer;">🔍 Compare</button>
         </div>
         
         <div id="resultsSection" style="display: none; margin-top: 30px;">
@@ -736,7 +736,7 @@ function generateReport() {
     uploadBtn.disabled = true;
     uploadBtn.style.cursor = 'not-allowed';
     uploadBtn.style.opacity = '0.5';
-    compareBtn.disabled = false;
+    compareBtn.style.background = 'linear-gradient(45deg, #4caf50, #388e3c)';
     compareBtn.style.cursor = 'pointer';
     compareBtn.style.opacity = '1';
   } else {
@@ -746,9 +746,9 @@ function generateReport() {
     uploadBtn.disabled = false;
     uploadBtn.style.cursor = 'pointer';
     uploadBtn.style.opacity = '1';
-    compareBtn.disabled = true;
-    compareBtn.style.cursor = 'not-allowed';
-    compareBtn.style.opacity = '0.5';
+    compareBtn.style.background = 'linear-gradient(45deg, #ccc, #999)';
+    compareBtn.style.cursor = 'pointer';
+    compareBtn.style.opacity = '0.6';
   }
   
   resultsSection.style.display = 'none';
