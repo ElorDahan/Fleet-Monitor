@@ -236,15 +236,16 @@
   </div>
 
 <script>
+const FIREBASE_FUNCTIONS = {
+  scanPlate: 'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanPlate',
+  scanKey: 'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanKey'
+};
+
 let db = {
   cars: [],
   keys: [],
   expected: [],
-  tempExpectedList: [],
-  apiUsage: {
-    plateRecognizer: 0,
-    googleVision: 0
-  }
+  tempExpectedList: []
 };
 
 function loadDataFromStorage() {
@@ -365,25 +366,21 @@ async function capturePhoto() {
       
       const base64Image = originalImage.split(',')[1];
       
-      const visionResponse = await fetch('https://vision.googleapis.com/v1/images:annotate?key=AIzaSyC5cNydQGbKVMQ5h06H8bxWgvGYo6jeeFk', {
+      const response = await fetch(FIREBASE_FUNCTIONS.scanKey, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          requests: [{
-            image: { content: base64Image },
-            features: [{ type: 'DOCUMENT_TEXT_DETECTION' }]
-          }]
+          image: base64Image
         })
       });
       
-      const visionData = await visionResponse.json();
+      const visionData = await response.json();
       let text = '';
       
       if (visionData.responses && visionData.responses[0].fullTextAnnotation) {
         text = visionData.responses[0].fullTextAnnotation.text;
-        db.apiUsage.googleVision++;
       }
       
       showLoading(false);
@@ -408,20 +405,17 @@ async function capturePhoto() {
       
       const base64Image = originalImage.split(',')[1];
       
-      const response = await fetch('https://api.platerecognizer.com/v1/plate-reader/', {
+      const response = await fetch(FIREBASE_FUNCTIONS.scanPlate, {
         method: 'POST',
         headers: {
-          'Authorization': 'Token a5c0d06220cdb26cf93a3568bf98c723236828d3',
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          upload: base64Image,
-          regions: ['il']
+          image: base64Image
         })
       });
       
       const data = await response.json();
-      db.apiUsage.plateRecognizer++;
       
       showLoading(false);
       
@@ -467,7 +461,6 @@ function formatPlateNumber(text) {
 function showVerificationModal(extracted, photo) {
   const formatted = formatPlateNumber(extracted);
   
-  // Update modal title based on scan type
   const titleText = currentScanType === 'cars' ? 'Verify Car Number' : 'Verify Key Number';
   document.getElementById('verificationTitle').textContent = titleText;
   
@@ -642,497 +635,4 @@ function showFullImage(imageSrc) {
   `;
   
   const img = document.createElement('img');
-  img.src = imageSrc;
-  img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 8px;';
-  
-  modal.appendChild(closeBtn);
-  modal.appendChild(img);
-  document.body.appendChild(modal);
-  
-  const closeModal = () => document.body.removeChild(modal);
-  closeBtn.onclick = closeModal;
-  modal.onclick = (e) => {
-    if (e.target === modal) closeModal();
-  };
-}
-
-function editEntry(tableId, index) {
-  const dataKey = tableId.replace('Table', '');
-  const dataArray = db[dataKey];
-  const newPlate = prompt('Enter new plate number (just digits):', dataArray[index].plate);
-  
-  if (newPlate) {
-    const formatted = formatPlateNumber(newPlate);
-    if (validatePlateFormat(formatted)) {
-      dataArray[index].plate = formatted;
-      saveDataToStorage();
-      updateTables();
-    } else {
-      alert('Invalid format! Need 8 digits.');
-    }
-  }
-}
-
-function deleteEntry(tableId, index) {
-  if (confirm('Delete this entry?')) {
-    const dataKey = tableId.replace('Table', '');
-    db[dataKey].splice(index, 1);
-    saveDataToStorage();
-    updateTables();
-  }
-}
-
-function uploadExpectedList() {
-  document.getElementById('fileUpload').click();
-}
-
-function discardExpectedList() {
-  if (confirm('⚠️ Are you sure you want to discard the expected list with ' + db.expected.length + ' entries?')) {
-    db.expected = [];
-    saveDataToStorage();
-    updateTables();
-    alert('✅ Expected list discarded');
-    generateReport();
-  }
-}
-
-function discardSection(section) {
-  const sectionNames = {
-    'cars': 'Physical Cars',
-    'keys': 'Physical Keys',
-    'expected': 'Expected Inventory'
-  };
-  
-  const count = db[section].length;
-  
-  if (count === 0) {
-    alert('Nothing to discard - this section is already empty!');
-    return;
-  }
-  
-  if (confirm(`⚠️ Are you sure you want to discard ALL ${sectionNames[section]}?\n\nThis will delete ${count} entries permanently.`)) {
-    db[section] = [];
-    saveDataToStorage();
-    updateTables();
-    alert(`✅ ${sectionNames[section]} discarded (${count} entries deleted)`);
-  }
-}
-
-function generateReport() {
-  document.getElementById('reportCarsCount').textContent = db.cars.length;
-  document.getElementById('reportKeysCount').textContent = db.keys.length;
-  document.getElementById('reportExpectedCount').textContent = db.expected.length;
-  
-  const readyStatusEl = document.getElementById('readyStatus');
-  const resultsSection = document.getElementById('resultsSection');
-  const discardBtn = document.getElementById('discardBtn');
-  const uploadBtn = document.getElementById('uploadBtn');
-  const compareBtn = document.getElementById('compareBtn');
-  
-  if (db.expected.length > 0) {
-    readyStatusEl.textContent = '(Ready)';
-    readyStatusEl.style.color = '#4caf50';
-    discardBtn.style.display = 'inline-block';
-    uploadBtn.disabled = true;
-    uploadBtn.style.cursor = 'not-allowed';
-    uploadBtn.style.opacity = '0.5';
-    compareBtn.style.background = 'linear-gradient(45deg, #4caf50, #388e3c)';
-    compareBtn.style.cursor = 'pointer';
-    compareBtn.style.opacity = '1';
-  } else {
-    readyStatusEl.textContent = '(Not Ready)';
-    readyStatusEl.style.color = '#f44336';
-    discardBtn.style.display = 'none';
-    uploadBtn.disabled = false;
-    uploadBtn.style.cursor = 'pointer';
-    uploadBtn.style.opacity = '1';
-    compareBtn.style.background = 'linear-gradient(45deg, #ccc, #999)';
-    compareBtn.style.cursor = 'pointer';
-    compareBtn.style.opacity = '0.6';
-  }
-  
-  resultsSection.style.display = 'none';
-  showScreen('reportScreen');
-}
-
-function attemptComparison() {
-  if (db.expected.length === 0) {
-    alert('📄 Please upload expected list before comparing');
-    return;
-  }
-  runComparison();
-}
-
-function runComparison() {
-  if (db.expected.length === 0) {
-    alert('Please import expected list first!');
-    return;
-  }
-  
-  showLoading(true);
-  document.querySelector('.loading-text').textContent = '🔍 Comparing data...';
-  
-  setTimeout(() => {
-    const results = performComparison();
-    showLoading(false);
-    displayComparisonResults(results);
-  }, 500);
-}
-
-function performComparison() {
-  const carPlates = new Set(db.cars.map(c => c.plate));
-  const keyPlates = new Set(db.keys.map(k => k.plate));
-  
-  const mismatched = [];
-  const fullResults = [];
-  
-  db.expected.forEach(item => {
-    const plate = item.plate;
-    const hasCar = carPlates.has(plate);
-    const hasKey = keyPlates.has(plate);
-    
-    let status = 'Complete';
-    if (!hasCar && !hasKey) {
-      status = 'Incomplete (missing both)';
-    } else if (!hasCar) {
-      status = 'Incomplete (missing car)';
-    } else if (!hasKey) {
-      status = 'Incomplete (missing key)';
-    }
-    
-    const result = {
-      plate: plate,
-      car: hasCar ? '✓' : '✗',
-      key: hasKey ? '✓' : '✗',
-      status: status
-    };
-    fullResults.push(result);
-    
-    if (!hasCar || !hasKey) {
-      const issues = [];
-      if (!hasCar) issues.push('Missing Car');
-      if (!hasKey) issues.push('Missing Key');
-      
-      mismatched.push({
-        plate: plate,
-        car: hasCar ? '✓' : '✗',
-        key: hasKey ? '✓' : '✗',
-        issue: issues.join(', ')
-      });
-    }
-  });
-  
-  const expectedPlates = new Set(db.expected.map(e => e.plate));
-  
-  carPlates.forEach(plate => {
-    if (!expectedPlates.has(plate)) {
-      mismatched.push({
-        plate: plate,
-        car: '✓',
-        key: keyPlates.has(plate) ? '✓' : '✗',
-        issue: 'Not in Expected List (Extra Car)'
-      });
-    }
-  });
-  
-  keyPlates.forEach(plate => {
-    if (!expectedPlates.has(plate) && !carPlates.has(plate)) {
-      mismatched.push({
-        plate: plate,
-        car: '✗',
-        key: '✓',
-        issue: 'Not in Expected List (Extra Key)'
-      });
-    }
-  });
-  
-  return { mismatched, fullResults };
-}
-
-function displayComparisonResults(results) {
-  const matched = results.fullResults.filter(r => r.status === 'Complete').length;
-  const total = results.fullResults.length;
-  
-      const summaryHtml = `
-    <div style="font-size: 18px; line-height: 2; margin: 20px 0;">
-      <p><strong>Total Expected:</strong> ${total}</p>
-      <p><strong>Complete Matches:</strong> <span style="color: #4caf50;">${matched}</span></p>
-      <p><strong>Issues Found:</strong> <span style="color: #f44336;">${results.mismatched.length}</span></p>
-    </div>
-    
-    ${results.mismatched.length > 0 ? `
-      <div style="background: #ffebee; padding: 15px; border-radius: 8px; border-left: 4px solid #f44336;">
-        <h3 style="color: #c62828; margin-bottom: 10px;">⚠️ Issues Detected</h3>
-        <p style="margin: 0;">There are ${results.mismatched.length} entries with problems. Download the Excel report for details.</p>
-      </div>
-    ` : `
-      <div style="background: #e8f5e9; padding: 15px; border-radius: 8px; border-left: 4px solid #4caf50;">
-        <h3 style="color: #2e7d32; margin-bottom: 10px;">✅ All Clear!</h3>
-        <p style="margin: 0;">All expected entries have both cars and keys registered.</p>
-      </div>
-    `}
-  `;
-  
-  document.getElementById('comparisonSummary').innerHTML = summaryHtml;
-  window.comparisonResults = results;
-  document.getElementById('resultsSection').style.display = 'block';
-  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
-}
-
-function emailResults() {
-  if (!window.comparisonResults) {
-    alert('Please run comparison first!');
-    return;
-  }
-  
-  showLoading(true);
-  document.querySelector('.loading-text').textContent = '📧 Preparing Excel file...';
-  
-  setTimeout(() => {
-    createAndDownloadExcelReport(window.comparisonResults);
-    showLoading(false);
-  }, 500);
-}
-
-function createAndDownloadExcelReport(results) {
-  const wb = XLSX.utils.book_new();
-  
-  const mismatchedData = results.mismatched.map(item => ({
-    'Plate Number': item.plate,
-    'Car': item.car,
-    'Key': item.key,
-    'Issue': item.issue
-  }));
-  
-  const mismatchedWS = XLSX.utils.json_to_sheet(mismatchedData);
-  XLSX.utils.book_append_sheet(wb, mismatchedWS, 'Mismatched Items');
-  
-  const fullResultsData = results.fullResults.map(item => ({
-    'Plate Number': item.plate,
-    'Car Registered': item.car,
-    'Key Registered': item.key,
-    'Status': item.status
-  }));
-  
-  const fullResultsWS = XLSX.utils.json_to_sheet(fullResultsData);
-  XLSX.utils.book_append_sheet(wb, fullResultsWS, 'Full Results');
-  
-  const fileName = `Reconciliation_Report_${new Date().toISOString().split('T')[0]}.xlsx`;
-  XLSX.writeFile(wb, fileName);
-  
-  alert(`✅ Excel report downloaded: ${fileName}\n\nYou can now email this file!`);
-}
-
-async function handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-  
-  showLoading(true);
-  document.querySelector('.loading-text').textContent = '📄 Reading file...';
-  
-  const fileName = file.name.toLowerCase();
-  let allPlates = [];
-  
-  try {
-    if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-      allPlates = await extractFromExcel(file);
-    } else if (fileName.endsWith('.csv')) {
-      allPlates = await extractFromCSV(file);
-    } else if (fileName.endsWith('.txt')) {
-      allPlates = await extractFromText(file);
-    } else {
-      showLoading(false);
-      alert('❌ Unsupported file format. Please use Excel, CSV, or TXT files.');
-      event.target.value = '';
-      return;
-    }
-    
-    showLoading(false);
-    
-    if (allPlates.length === 0) {
-      alert('❌ No valid numbers found in the file.');
-      event.target.value = '';
-      return;
-    }
-    
-    db.tempExpectedList = allPlates.map(plate => ({
-      plate: plate,
-      timestamp: new Date().toLocaleString(),
-      photo: null
-    }));
-    
-    showExpectedResults(allPlates);
-    
-  } catch (error) {
-    showLoading(false);
-    console.error('Error reading file:', error);
-    alert('❌ Error reading file: ' + error.message);
-  }
-  
-  event.target.value = '';
-}
-
-async function extractFromExcel(file) {
-  const arrayBuffer = await file.arrayBuffer();
-  const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-  
-  let allPlates = [];
-  
-  workbook.SheetNames.forEach(sheetName => {
-    const worksheet = workbook.Sheets[sheetName];
-    const data = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
-    
-    data.forEach(row => {
-      row.forEach(cell => {
-        if (cell) {
-          const cellText = String(cell);
-          const plates = extractPlatesFromText(cellText);
-          allPlates.push(...plates);
-        }
-      });
-    });
-  });
-  
-  return [...new Set(allPlates)];
-}
-
-async function extractFromCSV(file) {
-  const text = await file.text();
-  return extractPlatesFromText(text);
-}
-
-async function extractFromText(file) {
-  const text = await file.text();
-  return extractPlatesFromText(text);
-}
-
-function extractPlatesFromText(text) {
-  const plates = [];
-  const lines = text.split('\n');
-  
-  lines.forEach(line => {
-    const hyphenPattern = /(\d{3})-(\d{2})-(\d{3})/g;
-    let match;
-    while ((match = hyphenPattern.exec(line)) !== null) {
-      const plate = match[1] + match[2] + match[3];
-      const formatted = formatPlateNumber(plate);
-      if (validatePlateFormat(formatted) && !plates.includes(formatted)) {
-        plates.push(formatted);
-      }
-    }
-    
-    const digitsOnly = line.replace(/[^0-9]/g, '');
-    if (digitsOnly.length >= 8) {
-      for (let i = 0; i <= digitsOnly.length - 8; i++) {
-        const candidate = digitsOnly.substring(i, i + 8);
-        if (candidate[0] !== '0') {
-          const formatted = formatPlateNumber(candidate);
-          if (validatePlateFormat(formatted) && !plates.includes(formatted)) {
-            plates.push(formatted);
-          }
-        }
-      }
-    }
-  });
-  
-  return plates;
-}
-
-function showExpectedResults(plates) {
-  document.getElementById('totalRecorded').textContent = plates.length;
-  
-  const listHtml = plates.map((plate, index) => 
-    `<div style="padding: 10px; margin: 5px 0; background: #e3f2fd; border-radius: 5px;">
-      ${index + 1}. ${plate}
-    </div>`
-  ).join('');
-  
-  document.getElementById('recordedList').innerHTML = listHtml;
-  showScreen('expectedResultsScreen');
-}
-
-function confirmExpectedList() {
-  db.tempExpectedList.forEach(item => {
-    if (!db.expected.some(existing => existing.plate === item.plate)) {
-      db.expected.push(item);
-    }
-  });
-  
-  const count = db.tempExpectedList.length;
-  db.tempExpectedList = [];
-  
-  saveDataToStorage();
-  updateTables();
-  
-  alert(`✅ Successfully added ${count} entries to expected inventory!`);
-  generateReport();
-}
-
-function retryExpectedUpload() {
-  db.tempExpectedList = [];
-  document.getElementById('fileUpload').click();
-}
-
-function exportToExcel() {
-  const wb = XLSX.utils.book_new();
-  
-  const carsWS = XLSX.utils.json_to_sheet(db.cars.map(c => ({ 'Plate Number': c.plate, 'Date/Time': c.timestamp })));
-  XLSX.utils.book_append_sheet(wb, carsWS, 'Physical Cars');
-  
-  const keysWS = XLSX.utils.json_to_sheet(db.keys.map(k => ({ 'Key Number': k.plate, 'Date/Time': k.timestamp })));
-  XLSX.utils.book_append_sheet(wb, keysWS, 'Physical Keys');
-  
-  const expectedWS = XLSX.utils.json_to_sheet(db.expected.map(e => ({ 'Plate Number': e.plate, 'Date/Time': e.timestamp })));
-  XLSX.utils.book_append_sheet(wb, expectedWS, 'Expected Inventory');
-  
-  XLSX.writeFile(wb, `CarInventory_${new Date().toISOString().split('T')[0]}.xlsx`);
-}
-
-document.getElementById('searchCars')?.addEventListener('input', (e) => {
-  formatSearchInput(e);
-  filterTable('carsTable', e.target.value);
-});
-
-document.getElementById('searchKeys')?.addEventListener('input', (e) => {
-  formatSearchInput(e);
-  filterTable('keysTable', e.target.value);
-});
-
-document.getElementById('searchExpected')?.addEventListener('input', (e) => {
-  formatSearchInput(e);
-  filterTable('expectedTable', e.target.value);
-});
-
-function formatSearchInput(e) {
-  let value = e.target.value.replace(/\D/g, '');
-  
-  if (value.length > 8) {
-    value = value.substring(0, 8);
-  }
-  
-  let formatted = '';
-  if (value.length > 0) {
-    formatted = value.substring(0, 3);
-  }
-  if (value.length >= 4) {
-    formatted += '-' + value.substring(3, 5);
-  }
-  if (value.length >= 6) {
-    formatted += '-' + value.substring(5, 8);
-  }
-  
-  e.target.value = formatted;
-}
-
-function filterTable(tableId, query) {
-  const table = document.getElementById(tableId);
-  const rows = table.querySelectorAll('tbody tr');
-  
-  rows.forEach(row => {
-    const text = row.textContent.toLowerCase();
-    row.style.display = text.includes(query.toLowerCase()) ? '' : 'none';
-  });
-}
-</script>
-</body>
-</html>
+  img.src = imag
