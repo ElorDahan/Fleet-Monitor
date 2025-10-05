@@ -4,14 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Car Inventory App</title>
-  <!-- External libraries -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-  <script>
-    // Configure the PDF.js worker to avoid console warnings.
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-  </script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
@@ -20,12 +14,7 @@
     .screen.active { display: block; }
     .header { background: rgba(255,255,255,0.95); padding: 20px 60px 20px 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
     .header h1 { color: #333; font-size: 20px; text-align: center; }
-    .back-arrow {
-      position: absolute; top: 15px; left: 15px;
-      background: linear-gradient(45deg, #9c27b0, #7b1fa2);
-      color: white; border: none; padding: 8px 12px; border-radius: 8px;
-      font-size: 16px; cursor: pointer; box-shadow: 0 3px 10px rgba(156,39,176,0.3);
-    }
+    .back-arrow { position: absolute; top: 15px; left: 15px; background: linear-gradient(45deg, #9c27b0, #7b1fa2); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 3px 10px rgba(156,39,176,0.3); }
     .btn { background: linear-gradient(45deg, #4FC3F7, #29B6F6); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; width: 100%; margin: 10px 0; box-shadow: 0 5px 15px rgba(79,195,247,0.3); transition: transform 0.2s; }
     .btn:hover { transform: translateY(-2px); }
     .btn-secondary { background: linear-gradient(45deg, #9c27b0, #7b1fa2); }
@@ -42,13 +31,18 @@
     .modal-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 15px; }
     .modal-buttons button { padding: 8px 4px; font-size: 12px; white-space: nowrap; border-radius: 6px; }
     .captured-image { max-width: 100%; max-height: 250px; border-radius: 8px; margin: 10px 0; border: 2px solid #4FC3F7; object-fit: contain; display: block; margin-left: auto; margin-right: auto; }
-    @media (max-width: 480px) { .modal-buttons { grid-template-columns: 1fr; gap: 8px; } .modal-buttons button { padding: 12px; font-size: 14px; } }
+    @media (max-width: 480px) {
+      .modal-buttons { grid-template-columns: 1fr; gap: 8px; }
+      .modal-buttons button { padding: 12px; font-size: 14px; }
+    }
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     table th, table td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
     table th { background: #4FC3F7; color: white; }
     table td:nth-child(1) { font-weight: 600; white-space: nowrap; }
     table td:nth-child(2) { font-size: 11px; color: #666; }
-    @media (max-width: 768px) { table td:nth-child(2) { font-size: 10px; max-width: 80px; } }
+    @media (max-width: 768px) {
+      table td:nth-child(2) { font-size: 10px; max-width: 80px; }
+    }
     .action-btn { padding: 6px 12px; margin: 0 3px; border: none; border-radius: 5px; cursor: pointer; font-size: 12px; }
     .edit-btn { background: #ff9800; color: white; }
     .delete-btn { background: #f44336; color: white; }
@@ -63,40 +57,42 @@
 </head>
 <body>
   <div class="container">
-    <!-- Home screen -->
+    
     <div id="homeScreen" class="screen active">
       <div class="header">
         <h1>🚗 Car Inventory System</h1>
       </div>
-      <button class="btn" onclick="startScanning('cars')">🚗 Scan Cars</button>
-      <button class="btn" onclick="startScanning('keys')">🔑 Scan Keys</button>
-      <button class="btn btn-success" onclick="generateReport()">📊 Check Results</button>
-      <button class="btn btn-secondary" onclick="showScreen('tablesScreen')">📋 View Data</button>
-      <input type="file" id="fileUpload" accept=".pdf,.xlsx,.xls,.csv,.txt" style="display:none;" onchange="handleFileUpload(event)">
+      <button class="btn" id="btnScanCars">🚗 Scan Cars</button>
+      <button class="btn" id="btnScanKeys">🔑 Scan Keys</button>
+      <button class="btn btn-success" id="btnCheckResults">📊 Check Results</button>
+      <button class="btn btn-secondary" id="btnViewData">📋 View Data</button>
+      <input type="file" id="fileUpload" accept=".pdf,.xlsx,.xls,.csv,.txt" style="display:none;">
     </div>
-    <!-- Scan screen -->
+
     <div id="scanScreen" class="screen">
       <div class="header">
-        <button class="back-arrow" onclick="stopScanning()">←</button>
+        <button class="back-arrow" id="btnBackFromScan">←</button>
         <h1 id="scanTitle">Scanning...</h1>
       </div>
       <div class="card">
         <video id="videoElement" autoplay playsinline></video>
         <canvas id="canvas"></canvas>
-        <button class="btn" onclick="capturePhoto()">📸 Capture</button>
+        <button class="btn" id="btnCapture">📸 Capture</button>
       </div>
-      <div id="scanCountStatus" class="status-bar">Entries saved: <span id="scanCount">0</span></div>
+      <div id="scanCountStatus" class="status-bar">
+        Entries saved: <span id="scanCount">0</span>
+      </div>
     </div>
-    <!-- Tables screen -->
+
     <div id="tablesScreen" class="screen">
       <div class="header">
-        <button class="back-arrow" onclick="showScreen('homeScreen')">←</button>
+        <button class="back-arrow" id="btnBackFromTables">←</button>
         <h1>📊 Data Tables</h1>
       </div>
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
-          <button class="btn btn-danger" onclick="discardSection('cars')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
+          <button class="btn btn-danger" id="btnDiscardCars" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
         </div>
         <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
@@ -109,7 +105,7 @@
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
-          <button class="btn btn-danger" onclick="discardSection('keys')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
+          <button class="btn btn-danger" id="btnDiscardKeys" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
         </div>
         <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
@@ -122,7 +118,7 @@
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
           <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
-          <button class="btn btn-danger" onclick="discardSection('expected')" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
+          <button class="btn btn-danger" id="btnDiscardExpected" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
         </div>
         <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
@@ -133,10 +129,10 @@
         </div>
       </div>
     </div>
-    <!-- Report screen -->
+
     <div id="reportScreen" class="screen">
       <div class="header">
-        <button class="back-arrow" onclick="showScreen('homeScreen')">←</button>
+        <button class="back-arrow" id="btnBackFromReport">←</button>
         <h1>📊 Inventory Check</h1>
       </div>
       <div class="card">
@@ -144,428 +140,863 @@
         <div style="font-size: 18px; line-height: 2; margin: 20px 0;">
           <p><strong>Cars Found:</strong> <span id="reportCarsCount">0</span></p>
           <p><strong>Keys Found:</strong> <span id="reportKeysCount">0</span></p>
-          <p id="expectedStatus"><strong>Total Expected:</strong> <span id="reportExpectedCount">0</span> <span id="readyStatus" style="color: #f44336; font-weight: bold;">(Not Ready)</span><button id="discardBtn" onclick="discardExpectedList()" style="display: none; padding: 6px 12px; font-size: 13px; margin-left: 10px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️ Discard</button></p>
+          <p id="expectedStatus">
+            <strong>Total Expected:</strong> <span id="reportExpectedCount">0</span> 
+            <span id="readyStatus" style="color: #f44336; font-weight: bold;">(Not Ready)</span>
+            <button id="discardBtn" style="display: none; padding: 6px 12px; font-size: 13px; margin-left: 10px; background: #f44336; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">🗑️ Discard</button>
+          </p>
         </div>
-        <div id="uploadSection"><button id="uploadBtn" class="btn" onclick="uploadExpectedList()" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button></div>
-        <div id="compareSection" style="margin-top: 20px;"><button id="compareBtn" class="btn btn-success" onclick="attemptComparison()" style="cursor: pointer;">🔍 Compare</button></div>
-        <div id="resultsSection" style="display: none; margin-top: 30px;"><hr style="margin: 30px 0;"><h2>Results</h2><div id="comparisonSummary" style="margin: 20px 0;"></div><button class="btn btn-success" onclick="emailResults()">📧 Download Results as Excel</button></div>
+        <div id="uploadSection">
+          <button id="uploadBtn" class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button>
+        </div>
+        <div id="compareSection" style="margin-top: 20px;">
+          <button id="compareBtn" class="btn btn-success" style="cursor: pointer;">🔍 Compare</button>
+        </div>
+        <div id="resultsSection" style="display: none; margin-top: 30px;">
+          <hr style="margin: 30px 0;">
+          <h2>Results</h2>
+          <div id="comparisonSummary" style="margin: 20px 0;"></div>
+          <button class="btn btn-success" id="btnDownloadResults">📧 Download Results as Excel</button>
+        </div>
       </div>
     </div>
-    <!-- Expected results screen -->
+
     <div id="expectedResultsScreen" class="screen">
-      <div class="header"><button class="back-arrow" onclick="showScreen('reportScreen')">←</button><h1>📝 Cars Recorded</h1></div>
-      <div class="card"><h2 style="text-align: center; color: #4FC3F7; margin-bottom: 20px;">Total: <span id="totalRecorded" style="font-size: 32px; font-weight: bold;">0</span> cars</h2><div id="recordedList" style="font-size: 18px; line-height: 2;"></div><button class="btn btn-success" onclick="confirmExpectedList()" style="margin-top: 20px;">✅ Confirm & Save</button><button class="btn btn-warning" onclick="retryExpectedUpload()" style="margin-top: 10px;">🔄 Upload Different File</button></div>
+      <div class="header">
+        <button class="back-arrow" id="btnBackFromExpected">←</button>
+        <h1>📝 Cars Recorded</h1>
+      </div>
+      <div class="card">
+        <h2 style="text-align: center; color: #4FC3F7; margin-bottom: 20px;">
+          Total: <span id="totalRecorded" style="font-size: 32px; font-weight: bold;">0</span> cars
+        </h2>
+        <div id="recordedList" style="font-size: 18px; line-height: 2;"></div>
+        <button class="btn btn-success" id="btnConfirmExpected" style="margin-top: 20px;">✅ Confirm & Save</button>
+        <button class="btn btn-warning" id="btnRetryUpload" style="margin-top: 10px;">🔄 Upload Different File</button>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="loadingScreen" class="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">🔍 Processing...</div>
+  </div>
+
+  <div id="verificationModal" class="modal">
+    <div class="modal-content">
+      <h3 id="verificationTitle">Verify Number</h3>
+      <img id="capturedImage" class="captured-image" style="display:none;">
+      <p>Detected: <strong id="extractedText"></strong></p>
+      <input type="text" id="plateInput" placeholder="123-45-678" maxlength="10" inputmode="numeric">
+      <div class="modal-buttons">
+        <button class="btn btn-success" id="btnConfirmPlate">✓ OK</button>
+        <button class="btn btn-warning" id="btnRetake">📸 Retake</button>
+        <button class="btn" id="btnCancelScan" style="background: linear-gradient(45deg, #666, #444);">❌ Cancel</button>
+      </div>
     </div>
   </div>
-  <!-- Loading overlay -->
-  <div id="loadingScreen" class="loading"><div class="loading-spinner"></div><div class="loading-text">🔍 Processing...</div></div>
-  <!-- Verification modal -->
-  <div id="verificationModal" class="modal">
-    <div class="modal-content"><h3 id="verificationTitle">Verify Number</h3><img id="capturedImage" class="captured-image" style="display:none;"><p>Detected: <strong id="extractedText"></strong></p><input type="text" id="plateInput" placeholder="123-45-678" maxlength="10" inputmode="numeric"><div class="modal-buttons"><button class="btn btn-success" onclick="confirmPlate()">✓ OK</button><button class="btn btn-warning" onclick="retakePhoto()">📸 Retake</button><button class="btn" onclick="cancelScan()" style="background: linear-gradient(45deg, #666, #444);">❌ Cancel</button></div></div>
-  </div>
-  <script>
-    // Firebase endpoints for OCR (these remain unchanged and point to your cloud functions)
-    const FIREBASE_FUNCTIONS = {
-      scanPlate: 'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanPlate',
-      scanKey:   'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanKey'
+
+<script>
+// Initialize PDF.js
+if (typeof pdfjsLib !== 'undefined') {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+const FIREBASE_FUNCTIONS = {
+  scanPlate: 'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanPlate',
+  scanKey: 'https://us-central1-fleet-inventory-b4071.cloudfunctions.net/scanKey'
+};
+
+let db = {
+  cars: [],
+  keys: [],
+  expected: [],
+  tempExpectedList: []
+};
+
+let currentScanType = '';
+let stream = null;
+
+// ========== STORAGE FUNCTIONS ==========
+function loadDataFromStorage() {
+  try {
+    const savedData = localStorage.getItem('carInventoryData');
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      db = { ...db, ...parsed };
+      updateAllCounters();
+    }
+  } catch (error) {
+    console.error('Error loading data:', error);
+  }
+}
+
+function saveDataToStorage() {
+  try {
+    localStorage.setItem('carInventoryData', JSON.stringify(db));
+  } catch (error) {
+    console.error('Error saving data:', error);
+  }
+}
+
+// ========== NAVIGATION FUNCTIONS ==========
+function showScreen(screenId) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(screenId).classList.add('active');
+}
+
+function showLoading(show) {
+  const loading = document.getElementById('loadingScreen');
+  if (show) {
+    loading.classList.add('active');
+  } else {
+    loading.classList.remove('active');
+  }
+}
+
+// ========== SCANNING FUNCTIONS ==========
+async function startScanning(type) {
+  currentScanType = type;
+  showScreen('scanScreen');
+  const titles = { cars: '🚗 Cars', keys: '🔑 Keys' };
+  document.getElementById('scanTitle').textContent = titles[type];
+  updateScanCount();
+  
+  try {
+    let constraints = {
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 1280 },
+        height: { ideal: 720 }
+      }
     };
-    // In-memory database with persisted support
-    let db = { cars: [], keys: [], expected: [], tempExpectedList: [] };
-    // Load previously saved data
-    function loadDataFromStorage() {
-      try {
-        const saved = localStorage.getItem('carInventoryData');
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          db = { ...db, ...parsed };
-          updateAllCounters();
-        }
-      } catch (err) { console.error('Error loading data:', err); }
-    }
-    // Save data to storage
-    function saveDataToStorage() {
-      try { localStorage.setItem('carInventoryData', JSON.stringify(db)); }
-      catch (err) { console.error('Error saving data:', err); }
-    }
-    // Back button behaviour to keep SPA feel
-    function setupBackButtonHandler() {
-      window.history.pushState({ page: 'home' }, '', '');
-      window.addEventListener('popstate', function(event) {
-        event.preventDefault();
-        const activeScreen = document.querySelector('.screen.active');
-        const activeId = activeScreen ? activeScreen.id : 'homeScreen';
-        if (activeId === 'homeScreen') return;
-        if (activeId === 'scanScreen') stopScanning(); else showScreen('homeScreen');
-        window.history.pushState({ page: 'current' }, '', '');
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+    document.getElementById('videoElement').srcObject = stream;
+  } catch (err) {
+    alert('Camera access denied. Please allow camera access.');
+    showScreen('homeScreen');
+  }
+}
+
+function stopScanning() {
+  if (stream) {
+    stream.getTracks().forEach(track => track.stop());
+    stream = null;
+  }
+  showScreen('homeScreen');
+}
+
+async function capturePhoto() {
+  const video = document.getElementById('videoElement');
+  const canvas = document.getElementById('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+  const originalImage = canvas.toDataURL('image/jpeg', 0.95);
+  
+  showLoading(true);
+  
+  try {
+    if (currentScanType === 'keys') {
+      document.querySelector('.loading-text').textContent = '🔍 Reading key tag with AI...';
+      const base64Image = originalImage.split(',')[1];
+      const response = await fetch(FIREBASE_FUNCTIONS.scanKey, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
       });
+      const visionData = await response.json();
+      let text = '';
+      if (visionData.responses && visionData.responses[0].fullTextAnnotation) {
+        text = visionData.responses[0].fullTextAnnotation.text;
+      }
+      showLoading(false);
+      let allDigits = text.replace(/\D/g, '');
+      let bestMatch = '';
+      for (let i = 0; i <= allDigits.length - 8; i++) {
+        let candidate = allDigits.substring(i, i + 8);
+        if (candidate[0] !== '0') {
+          bestMatch = candidate;
+          break;
+        }
+      }
+      document.getElementById('capturedImage').src = originalImage;
+      document.getElementById('capturedImage').style.display = 'block';
+      showVerificationModal(bestMatch, originalImage);
+    } else if (currentScanType === 'cars') {
+      document.querySelector('.loading-text').textContent = '🔍 Reading license plate...';
+      const base64Image = originalImage.split(',')[1];
+      const response = await fetch(FIREBASE_FUNCTIONS.scanPlate, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64Image })
+      });
+      const data = await response.json();
+      showLoading(false);
+      let detectedPlate = '';
+      if (data.results && data.results.length > 0) {
+        const bestResult = data.results.reduce((prev, current) => 
+          (current.score > prev.score) ? current : prev
+        );
+        detectedPlate = bestResult.plate.replace(/\D/g, '');
+      }
+      let finalMatch = '';
+      if (detectedPlate.length >= 8) {
+        for (let i = 0; i <= detectedPlate.length - 8; i++) {
+          let candidate = detectedPlate.substring(i, i + 8);
+          if (candidate[0] !== '0') {
+            finalMatch = candidate;
+            break;
+          }
+        }
+      }
+      document.getElementById('capturedImage').src = originalImage;
+      document.getElementById('capturedImage').style.display = 'block';
+      showVerificationModal(finalMatch, originalImage);
     }
-    // Initialise after DOM is ready
-    document.addEventListener('DOMContentLoaded', function() {
-      loadDataFromStorage();
-      setupBackButtonHandler();
-    });
-    // Screen switching helper
-    function showScreen(id) {
-      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-      const el = document.getElementById(id);
-      if (el) el.classList.add('active');
+  } catch (err) {
+    showLoading(false);
+    alert('Processing failed. Please try again.');
+    console.error('Error:', err);
+  }
+}
+
+// ========== VERIFICATION MODAL ==========
+function formatPlateNumber(text) {
+  text = text.replace(/\D/g, '');
+  if (text.length >= 8) {
+    return text.slice(0,3) + '-' + text.slice(3,5) + '-' + text.slice(5,8);
+  }
+  return text;
+}
+
+function showVerificationModal(extracted, photo) {
+  const formatted = formatPlateNumber(extracted);
+  const titleText = currentScanType === 'cars' ? 'Verify Car Number' : 'Verify Key Number';
+  document.getElementById('verificationTitle').textContent = titleText;
+  document.getElementById('extractedText').textContent = formatted || 'None detected';
+  document.getElementById('plateInput').value = formatted;
+  document.getElementById('verificationModal').classList.add('active');
+  document.getElementById('verificationModal').dataset.photo = photo;
+  setTimeout(() => {
+    const input = document.getElementById('plateInput');
+    input.focus();
+    input.select();
+  }, 100);
+}
+
+function confirmPlate() {
+  let plate = document.getElementById('plateInput').value.trim();
+  plate = formatPlateNumber(plate);
+  if (!validatePlateFormat(plate)) {
+    alert('Invalid format! Need 8 digits.');
+    return;
+  }
+  if (plate[0] === '0') {
+    alert('Invalid plate! Plate number cannot start with 0.');
+    return;
+  }
+  savePlate(plate);
+}
+
+function retakePhoto() {
+  document.getElementById('verificationModal').classList.remove('active');
+}
+
+function cancelScan() {
+  document.getElementById('verificationModal').classList.remove('active');
+  stopScanning();
+}
+
+function validatePlateFormat(plate) {
+  return /^\d{3}-\d{2}-\d{3}$/.test(plate);
+}
+
+function savePlate(plate) {
+  const table = currentScanType === 'cars' ? 'cars' : 'keys';
+  if (db[table].some(item => item.plate === plate)) {
+    const itemType = currentScanType === 'cars' ? 'car' : 'key';
+    alert(`⚠️ Already scanned this ${itemType}: ` + plate);
+    document.getElementById('verificationModal').classList.remove('active');
+    return;
+  }
+  const photo = document.getElementById('verificationModal').dataset.photo;
+  const item = {
+    plate: plate,
+    timestamp: new Date().toLocaleString(),
+    photo: photo
+  };
+  db[table].push(item);
+  saveDataToStorage();
+  updateTables();
+  updateScanCount();
+  document.getElementById('verificationModal').classList.remove('active');
+  const itemType = currentScanType === 'cars' ? 'car' : 'key';
+  alert(`✅ Saved ${itemType}: ` + plate);
+}
+
+// ========== TABLE FUNCTIONS ==========
+function updateScanCount() {
+  if (currentScanType === 'cars') {
+    document.getElementById('scanCount').textContent = db.cars.length;
+  } else if (currentScanType === 'keys') {
+    document.getElementById('scanCount').textContent = db.keys.length;
+  }
+}
+
+function updateAllCounters() {
+  updateTables();
+  if (currentScanType === 'cars' || currentScanType === 'keys') {
+    updateScanCount();
+  }
+}
+
+function updateTables() {
+  renderTable('carsTable', db.cars, 'carsCount');
+  renderTable('keysTable', db.keys, 'keysCount');
+  renderTable('expectedTable', db.expected, 'expectedCount');
+}
+
+function renderTable(tableId, data, countId) {
+  const tbody = document.getElementById(tableId).querySelector('tbody');
+  tbody.innerHTML = '';
+  data.forEach((item, index) => {
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = item.plate;
+    row.insertCell(1).textContent = item.timestamp;
+    const photoCell = row.insertCell(2);
+    if (item.photo) {
+      const img = document.createElement('img');
+      img.src = item.photo;
+      img.style.width = '50px';
+      img.style.height = '30px';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '4px';
+      img.style.cursor = 'pointer';
+      img.onclick = () => showFullImage(item.photo);
+      photoCell.appendChild(img);
+    } else {
+      photoCell.textContent = 'No photo';
     }
-    // Loading overlay toggler
-    function showLoading(show) {
-      const loader = document.getElementById('loadingScreen');
-      if (show) loader.classList.add('active'); else loader.classList.remove('active');
+    const actionsCell = row.insertCell(3);
+    actionsCell.innerHTML = `
+      <button class="action-btn edit-btn" data-table="${tableId}" data-index="${index}">Edit</button>
+      <button class="action-btn delete-btn" data-table="${tableId}" data-index="${index}">Delete</button>
+    `;
+  });
+  document.getElementById(countId).textContent = data.length;
+}
+
+function showFullImage(imageSrc) {
+  const modal = document.createElement('div');
+  modal.style.cssText = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.9); z-index: 3000; display: flex; 
+    justify-content: center; align-items: center;
+  `;
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '×';
+  closeBtn.style.cssText = `
+    position: absolute; top: 20px; right: 20px; 
+    background: rgba(255,255,255,0.9); border: none; 
+    font-size: 30px; width: 40px; height: 40px; 
+    border-radius: 50%; cursor: pointer; z-index: 3001;
+    color: #333; font-weight: bold;
+  `;
+  const img = document.createElement('img');
+  img.src = imageSrc;
+  img.style.cssText = 'max-width: 90%; max-height: 90%; border-radius: 10px;';
+  modal.appendChild(closeBtn);
+  modal.appendChild(img);
+  document.body.appendChild(modal);
+  closeBtn.onclick = () => document.body.removeChild(modal);
+  modal.onclick = (e) => { if (e.target === modal) document.body.removeChild(modal); };
+}
+
+function editEntry(tableId, index) {
+  const dataType = tableId === 'carsTable' ? 'cars' : tableId === 'keysTable' ? 'keys' : 'expected';
+  const item = db[dataType][index];
+  const newPlate = prompt('Edit plate number:', item.plate);
+  if (newPlate) {
+    const formatted = formatPlateNumber(newPlate);
+    if (validatePlateFormat(formatted)) {
+      db[dataType][index].plate = formatted;
+      saveDataToStorage();
+      updateTables();
+    } else {
+      alert('Invalid format! Need 8 digits in format XXX-XX-XXX');
     }
-    let currentScanType = '';
-    let stream = null;
-    // Start scanning using the camera
-    async function startScanning(type) {
-      currentScanType = type;
-      showScreen('scanScreen');
-      const titles = { cars: '🚗 Cars', keys: '🔑 Keys' };
-      document.getElementById('scanTitle').textContent = titles[type];
-      updateScanCount();
-      try {
-        const constraints = { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } };
-        stream = await navigator.mediaDevices.getUserMedia(constraints);
-        document.getElementById('videoElement').srcObject = stream;
-      } catch (err) {
-        alert('Camera access denied. Please allow camera access.');
-        showScreen('homeScreen');
+  }
+}
+
+function deleteEntry(tableId, index) {
+  const dataType = tableId === 'carsTable' ? 'cars' : tableId === 'keysTable' ? 'keys' : 'expected';
+  if (confirm('Delete this entry?')) {
+    db[dataType].splice(index, 1);
+    saveDataToStorage();
+    updateTables();
+  }
+}
+
+function discardSection(section) {
+  const messages = {
+    cars: 'Delete all scanned cars?',
+    keys: 'Delete all scanned keys?',
+    expected: 'Delete the expected inventory list?'
+  };
+  if (confirm(messages[section])) {
+    db[section] = [];
+    saveDataToStorage();
+    updateTables();
+  }
+}
+
+function filterTable(tableId, searchValue, data) {
+  const cleanSearch = searchValue.replace(/\D/g, '');
+  const tbody = document.getElementById(tableId).querySelector('tbody');
+  tbody.innerHTML = '';
+  
+  const filtered = data.filter(item => {
+    const cleanPlate = item.plate.replace(/\D/g, '');
+    return cleanPlate.includes(cleanSearch);
+  });
+  
+  filtered.forEach((item) => {
+    const originalIndex = data.indexOf(item);
+    const row = tbody.insertRow();
+    row.insertCell(0).textContent = item.plate;
+    row.insertCell(1).textContent = item.timestamp;
+    
+    const photoCell = row.insertCell(2);
+    if (item.photo) {
+      const img = document.createElement('img');
+      img.src = item.photo;
+      img.style.width = '50px';
+      img.style.height = '30px';
+      img.style.objectFit = 'cover';
+      img.style.borderRadius = '4px';
+      img.style.cursor = 'pointer';
+      img.onclick = () => showFullImage(item.photo);
+      photoCell.appendChild(img);
+    } else {
+      photoCell.textContent = 'No photo';
+    }
+    
+    const actionsCell = row.insertCell(3);
+    actionsCell.innerHTML = `
+      <button class="action-btn edit-btn" data-table="${tableId}" data-index="${originalIndex}">Edit</button>
+      <button class="action-btn delete-btn" data-table="${tableId}" data-index="${originalIndex}">Delete</button>
+    `;
+  });
+}
+
+// ========== REPORT FUNCTIONS ==========
+function generateReport() {
+  showScreen('reportScreen');
+  document.getElementById('reportCarsCount').textContent = db.cars.length;
+  document.getElementById('reportKeysCount').textContent = db.keys.length;
+  document.getElementById('reportExpectedCount').textContent = db.expected.length;
+  
+  if (db.expected.length > 0) {
+    document.getElementById('readyStatus').textContent = '(Ready to Compare)';
+    document.getElementById('readyStatus').style.color = '#4caf50';
+    document.getElementById('discardBtn').style.display = 'inline-block';
+  } else {
+    document.getElementById('readyStatus').textContent = '(Not Ready)';
+    document.getElementById('readyStatus').style.color = '#f44336';
+    document.getElementById('discardBtn').style.display = 'none';
+  }
+  document.getElementById('resultsSection').style.display = 'none';
+}
+
+function uploadExpectedList() {
+  document.getElementById('fileUpload').click();
+}
+
+function discardExpectedList() {
+  if (confirm('Delete the expected inventory list?')) {
+    db.expected = [];
+    saveDataToStorage();
+    updateTables();
+    generateReport();
+  }
+}
+
+// ========== FILE UPLOAD FUNCTIONS ==========
+async function handleFileUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  showLoading(true);
+  document.querySelector('.loading-text').textContent = '📄 Reading file...';
+  
+  try {
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    let plateNumbers = [];
+    
+    if (fileExt === 'txt') {
+      const text = await file.text();
+      plateNumbers = extractPlatesFromText(text);
+    } else if (fileExt === 'csv') {
+      const text = await file.text();
+      plateNumbers = extractPlatesFromCSV(text);
+    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const jsonData = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      plateNumbers = extractPlatesFromArray(jsonData);
+    } else if (fileExt === 'pdf') {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items.map(item => item.str).join(' ');
+        fullText += pageText + ' ';
+      }
+      plateNumbers = extractPlatesFromText(fullText);
+    }
+    
+    showLoading(false);
+    
+    if (plateNumbers.length === 0) {
+      alert('No valid plate numbers found in file!');
+      event.target.value = '';
+      return;
+    }
+    
+    db.tempExpectedList = plateNumbers;
+    displayExpectedResults(plateNumbers);
+    event.target.value = '';
+    
+  } catch (error) {
+    showLoading(false);
+    alert('Error reading file: ' + error.message);
+    event.target.value = '';
+  }
+}
+
+function extractPlatesFromText(text) {
+  const allDigits = text.match(/\d+/g) || [];
+  const plates = [];
+  for (let digits of allDigits) {
+    if (digits.length >= 8) {
+      for (let i = 0; i <= digits.length - 8; i++) {
+        const candidate = digits.substring(i, i + 8);
+        if (candidate[0] !== '0') {
+          const formatted = formatPlateNumber(candidate);
+          if (!plates.includes(formatted)) {
+            plates.push(formatted);
+          }
+          break;
+        }
       }
     }
-    // Stop camera usage
-    function stopScanning() {
-      if (stream) {
-        stream.getTracks().forEach(track => track.stop());
-        stream = null;
+  }
+  return plates;
+}
+
+function extractPlatesFromCSV(text) {
+  const lines = text.split(/\r?\n/);
+  const plates = [];
+  for (let line of lines) {
+    const cells = line.split(',');
+    for (let cell of cells) {
+      const digits = cell.replace(/\D/g, '');
+      if (digits.length >= 8) {
+        for (let i = 0; i <= digits.length - 8; i++) {
+          const candidate = digits.substring(i, i + 8);
+          if (candidate[0] !== '0') {
+            const formatted = formatPlateNumber(candidate);
+            if (!plates.includes(formatted)) {
+              plates.push(formatted);
+            }
+            break;
+          }
+        }
       }
-      showScreen('homeScreen');
     }
-    // Capture a photo and send to Firebase OCR
-    async function capturePhoto() {
-      const video = document.getElementById('videoElement');
-      const canvas = document.getElementById('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(video, 0, 0);
-      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-      showLoading(true);
-      try {
-        if (currentScanType === 'keys') {
-          document.querySelector('.loading-text').textContent = '🔍 Reading key tag with AI...';
-          const base64Image = dataUrl.split(',')[1];
-          const resp = await fetch(FIREBASE_FUNCTIONS.scanKey, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64Image }) });
-          const json = await resp.json();
-          let text = '';
-          if (json.responses && json.responses[0].fullTextAnnotation) text = json.responses[0].fullTextAnnotation.text;
-          showLoading(false);
-          const digits = text.replace(/\D/g, '');
-          let best = '';
+  }
+  return plates;
+}
+
+function extractPlatesFromArray(data) {
+  const plates = [];
+  for (let row of data) {
+    for (let cell of row) {
+      if (cell) {
+        const cellStr = String(cell);
+        const digits = cellStr.replace(/\D/g, '');
+        if (digits.length >= 8) {
           for (let i = 0; i <= digits.length - 8; i++) {
             const candidate = digits.substring(i, i + 8);
-            if (candidate[0] !== '0') { best = candidate; break; }
-          }
-          document.getElementById('capturedImage').src = dataUrl;
-          document.getElementById('capturedImage').style.display = 'block';
-          showVerificationModal(best, dataUrl);
-        } else {
-          document.querySelector('.loading-text').textContent = '🔍 Reading license plate...';
-          const base64Image = dataUrl.split(',')[1];
-          const resp = await fetch(FIREBASE_FUNCTIONS.scanPlate, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64Image }) });
-          const json = await resp.json();
-          showLoading(false);
-          let plateDigits = '';
-          if (json.results && json.results.length) {
-            const bestResult = json.results.reduce((p, c) => (c.score > p.score ? c : p));
-            plateDigits = bestResult.plate.replace(/\D/g, '');
-          }
-          let best = '';
-          if (plateDigits.length >= 8) {
-            for (let i = 0; i <= plateDigits.length - 8; i++) {
-              const candidate = plateDigits.substring(i, i + 8);
-              if (candidate[0] !== '0') { best = candidate; break; }
+            if (candidate[0] !== '0') {
+              const formatted = formatPlateNumber(candidate);
+              if (!plates.includes(formatted)) {
+                plates.push(formatted);
+              }
+              break;
             }
           }
-          document.getElementById('capturedImage').src = dataUrl;
-          document.getElementById('capturedImage').style.display = 'block';
-          showVerificationModal(best, dataUrl);
         }
-      } catch (err) {
-        showLoading(false);
-        alert('Processing failed. Please try again.');
-        console.error(err);
       }
     }
-    // Format digits to xxx-xx-xxx
-    function formatPlateNumber(txt) {
-      const digits = txt.replace(/\D/g, '');
-      if (digits.length >= 8) return digits.slice(0,3)+'-'+digits.slice(3,5)+'-'+digits.slice(5,8);
-      return digits;
+  }
+  return plates;
+}
+
+function displayExpectedResults(plates) {
+  showScreen('expectedResultsScreen');
+  document.getElementById('totalRecorded').textContent = plates.length;
+  const listDiv = document.getElementById('recordedList');
+  listDiv.innerHTML = '<strong>Plate Numbers Found:</strong><br>' + plates.join('<br>');
+}
+
+function confirmExpectedList() {
+  db.expected = db.tempExpectedList.map(plate => ({
+    plate: plate,
+    timestamp: new Date().toLocaleString(),
+    photo: null
+  }));
+  db.tempExpectedList = [];
+  saveDataToStorage();
+  updateTables();
+  alert('✅ Expected list saved successfully!');
+  generateReport();
+}
+
+function retryExpectedUpload() {
+  db.tempExpectedList = [];
+  showScreen('reportScreen');
+  uploadExpectedList();
+}
+
+// ========== COMPARISON FUNCTIONS ==========
+function attemptComparison() {
+  if (db.expected.length === 0) {
+    alert('⚠️ Please upload an expected inventory list first!');
+    return;
+  }
+  
+  const results = performComparison();
+  displayComparisonResults(results);
+}
+
+function performComparison() {
+  const expectedPlates = db.expected.map(e => e.plate);
+  const scannedCars = db.cars.map(c => c.plate);
+  const scannedKeys = db.keys.map(k => k.plate);
+  
+  const results = [];
+  
+  for (let plate of expectedPlates) {
+    const hasCar = scannedCars.includes(plate);
+    const hasKey = scannedKeys.includes(plate);
+    
+    let status = '';
+    if (hasCar && hasKey) {
+      status = 'Complete';
+    } else if (!hasCar && !hasKey) {
+      status = 'Incomplete (missing car and key)';
+    } else if (!hasCar) {
+      status = 'Incomplete (missing car)';
+    } else if (!hasKey) {
+      status = 'Incomplete (missing key)';
     }
-    // Show modal for user verification
-    function showVerificationModal(extracted, photo) {
-      const formatted = formatPlateNumber(extracted || '');
-      const title = currentScanType === 'cars' ? 'Verify Car Number' : 'Verify Key Number';
-      document.getElementById('verificationTitle').textContent = title;
-      document.getElementById('extractedText').textContent = formatted || 'None detected';
-      document.getElementById('plateInput').value = formatted;
-      const modal = document.getElementById('verificationModal');
-      modal.dataset.photo = photo;
-      modal.classList.add('active');
-      setTimeout(() => { const input = document.getElementById('plateInput'); input.focus(); input.select(); }, 100);
-    }
-    // Input mask for plate field
-    document.getElementById('plateInput').addEventListener('input', function(e) {
-      let val = e.target.value.replace(/\D/g, '');
-      if (val.length > 8) val = val.substring(0,8);
-      let out = '';
-      if (val.length > 0) out = val.slice(0,3);
-      if (val.length >= 4) out += '-' + val.slice(3,5);
-      if (val.length >= 6) out += '-' + val.slice(5,8);
-      const oldLen = e.target.value.length;
-      const cursor = e.target.selectionStart;
-      e.target.value = out;
-      if (out.length > oldLen && out[cursor] === '-') e.target.setSelectionRange(cursor+1, cursor+1);
+    
+    results.push({
+      plate: plate,
+      car: hasCar ? 'Yes' : 'No',
+      key: hasKey ? 'Yes' : 'No',
+      status: status
     });
-    // Validate XXX-XX-XXX format
-    function validatePlateFormat(p) {
-      return /^\d{3}-\d{2}-\d{3}$/.test(p);
+  }
+  
+  for (let plate of scannedCars) {
+    if (!expectedPlates.includes(plate)) {
+      results.push({
+        plate: plate,
+        car: 'Yes',
+        key: scannedKeys.includes(plate) ? 'Yes' : 'No',
+        status: 'Extra (not in expected list)'
+      });
     }
-    // Confirmation handler
-    function confirmPlate() {
-      let p = document.getElementById('plateInput').value.trim();
-      p = formatPlateNumber(p);
-      if (!validatePlateFormat(p)) { alert('Invalid format! Need 8 digits.'); return; }
-      if (p[0] === '0') { alert('Invalid number! It cannot start with 0.'); return; }
-      savePlate(p);
+  }
+  
+  for (let plate of scannedKeys) {
+    if (!expectedPlates.includes(plate) && !scannedCars.includes(plate)) {
+      results.push({
+        plate: plate,
+        car: 'No',
+        key: 'Yes',
+        status: 'Extra (not in expected list)'
+      });
     }
-    // Retake simply hides modal
-    function retakePhoto() { document.getElementById('verificationModal').classList.remove('active'); }
-    // Cancel scanning completely
-    function cancelScan() {
-      document.getElementById('verificationModal').classList.remove('active');
+  }
+  
+  return results;
+}
+
+function displayComparisonResults(results) {
+  const complete = results.filter(r => r.status === 'Complete').length;
+  const incomplete = results.filter(r => r.status.startsWith('Incomplete')).length;
+  const extra = results.filter(r => r.status.startsWith('Extra')).length;
+  
+  const summaryHtml = `
+    <div style="font-size: 18px; line-height: 2;">
+      <p><strong>✅ Complete:</strong> ${complete}</p>
+      <p><strong>⚠️ Incomplete:</strong> ${incomplete}</p>
+      <p><strong>➕ Extra:</strong> ${extra}</p>
+    </div>
+  `;
+  
+  document.getElementById('comparisonSummary').innerHTML = summaryHtml;
+  document.getElementById('resultsSection').style.display = 'block';
+  
+  window.comparisonResults = results;
+}
+
+function emailResults() {
+  if (!window.comparisonResults) {
+    alert('No comparison results available!');
+    return;
+  }
+  
+  const wb = XLSX.utils.book_new();
+  
+  const problemsOnly = window.comparisonResults.filter(r => r.status !== 'Complete');
+  const problemsData = [
+    ['Plate Number', 'Car', 'Key', 'Status'],
+    ...problemsOnly.map(r => [r.plate, r.car, r.key, r.status])
+  ];
+  const ws1 = XLSX.utils.aoa_to_sheet(problemsData);
+  XLSX.utils.book_append_sheet(wb, ws1, 'Problems Only');
+  
+  const allData = [
+    ['Plate Number', 'Car', 'Key', 'Status'],
+    ...window.comparisonResults.map(r => [r.plate, r.car, r.key, r.status])
+  ];
+  const ws2 = XLSX.utils.aoa_to_sheet(allData);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Full Results');
+  
+  const timestamp = new Date().toISOString().slice(0,10);
+  XLSX.writeFile(wb, `Inventory_Report_${timestamp}.xlsx`);
+}
+
+// ========== EVENT LISTENERS SETUP ==========
+document.addEventListener('DOMContentLoaded', function() {
+  loadDataFromStorage();
+  setupBackButtonHandler();
+  setupEventListeners();
+});
+
+function setupBackButtonHandler() {
+  window.history.pushState({ page: 'home' }, '', '');
+  window.addEventListener('popstate', function(event) {
+    event.preventDefault();
+    const activeScreen = document.querySelector('.screen.active');
+    const activeScreenId = activeScreen ? activeScreen.id : 'homeScreen';
+    if (activeScreenId === 'homeScreen') {
+      return;
+    } else if (activeScreenId === 'scanScreen') {
       stopScanning();
+    } else {
+      showScreen('homeScreen');
     }
-    // Save plate into appropriate list
-    function savePlate(p) {
-      const list = currentScanType === 'cars' ? 'cars' : 'keys';
-      if (db[list].some(item => item.plate === p)) { alert('⚠️ Already scanned this ' + (list === 'cars' ? 'car' : 'key') + ': ' + p); document.getElementById('verificationModal').classList.remove('active'); return; }
-      const photo = document.getElementById('verificationModal').dataset.photo;
-      db[list].push({ plate: p, timestamp: new Date().toLocaleString(), photo: photo });
-      saveDataToStorage();
-      updateTables();
-      updateScanCount();
-      document.getElementById('verificationModal').classList.remove('active');
-      alert('✅ Saved ' + (list === 'cars' ? 'car' : 'key') + ': ' + p);
+    window.history.pushState({ page: 'current' }, '', '');
+  });
+}
+
+function setupEventListeners() {
+  // Home screen buttons
+  document.getElementById('btnScanCars').addEventListener('click', () => startScanning('cars'));
+  document.getElementById('btnScanKeys').addEventListener('click', () => startScanning('keys'));
+  document.getElementById('btnCheckResults').addEventListener('click', generateReport);
+  document.getElementById('btnViewData').addEventListener('click', () => showScreen('tablesScreen'));
+  
+  // Scan screen buttons
+  document.getElementById('btnBackFromScan').addEventListener('click', stopScanning);
+  document.getElementById('btnCapture').addEventListener('click', capturePhoto);
+  
+  // Tables screen buttons
+  document.getElementById('btnBackFromTables').addEventListener('click', () => showScreen('homeScreen'));
+  document.getElementById('btnDiscardCars').addEventListener('click', () => discardSection('cars'));
+  document.getElementById('btnDiscardKeys').addEventListener('click', () => discardSection('keys'));
+  document.getElementById('btnDiscardExpected').addEventListener('click', () => discardSection('expected'));
+  
+  // Report screen buttons
+  document.getElementById('btnBackFromReport').addEventListener('click', () => showScreen('homeScreen'));
+  document.getElementById('uploadBtn').addEventListener('click', uploadExpectedList);
+  document.getElementById('discardBtn').addEventListener('click', discardExpectedList);
+  document.getElementById('compareBtn').addEventListener('click', attemptComparison);
+  document.getElementById('btnDownloadResults').addEventListener('click', emailResults);
+  
+  // Expected results screen buttons
+  document.getElementById('btnBackFromExpected').addEventListener('click', () => showScreen('reportScreen'));
+  document.getElementById('btnConfirmExpected').addEventListener('click', confirmExpectedList);
+  document.getElementById('btnRetryUpload').addEventListener('click', retryExpectedUpload);
+  
+  // Verification modal buttons
+  document.getElementById('btnConfirmPlate').addEventListener('click', confirmPlate);
+  document.getElementById('btnRetake').addEventListener('click', retakePhoto);
+  document.getElementById('btnCancelScan').addEventListener('click', cancelScan);
+  
+  // File upload
+  document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+  
+  // Plate input auto-formatting
+  document.getElementById('plateInput').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 8) {
+      value = value.substring(0, 8);
     }
-    // Update count on scan screen
-    function updateScanCount() {
-      if (currentScanType === 'cars') document.getElementById('scanCount').textContent = db.cars.length;
-      else if (currentScanType === 'keys') document.getElementById('scanCount').textContent = db.keys.length;
+    let formatted = '';
+    if (value.length > 0) {
+      formatted = value.substring(0, 3);
     }
-    // Update tables and counters
-    function updateAllCounters() {
-      updateTables();
-      if (currentScanType === 'cars' || currentScanType === 'keys') updateScanCount();
+    if (value.length >= 4) {
+      formatted += '-' + value.substring(3, 5);
     }
-    // Render all tables
-    function updateTables() {
-      renderTable('carsTable', db.cars, 'carsCount');
-      renderTable('keysTable', db.keys, 'keysCount');
-      renderTable('expectedTable', db.expected, 'expectedCount');
+    if (value.length >= 6) {
+      formatted += '-' + value.substring(5, 8);
     }
-    // Render a particular table
-    function renderTable(id, data, countId) {
-      const tbody = document.getElementById(id).querySelector('tbody');
-      tbody.innerHTML = '';
-      data.forEach((item, idx) => {
-        const row = tbody.insertRow();
-        row.insertCell(0).textContent = item.plate;
-        row.insertCell(1).textContent = item.timestamp;
-        const photoCell = row.insertCell(2);
-        if (item.photo) {
-          const img = document.createElement('img');
-          img.src = item.photo;
-          img.style.width = '50px'; img.style.height = '30px'; img.style.objectFit = 'cover'; img.style.borderRadius = '4px'; img.style.cursor = 'pointer';
-          img.onclick = () => showFullImage(item.photo);
-          photoCell.appendChild(img);
-        } else { photoCell.textContent = 'No photo'; }
-        const actionsCell = row.insertCell(3);
-        actionsCell.innerHTML = `<button class="action-btn edit-btn" onclick="editEntry('${id}', ${idx})">Edit</button><button class="action-btn delete-btn" onclick="deleteEntry('${id}', ${idx})">Delete</button>`;
-      });
-      document.getElementById(countId).textContent = data.length;
+    const cursorPos = e.target.selectionStart;
+    const oldValue = e.target.value;
+    e.target.value = formatted;
+    if (formatted.length > oldValue.length && (formatted[cursorPos] === '-')) {
+      e.target.setSelectionRange(cursorPos + 1, cursorPos + 1);
     }
-    // Show a captured image in overlay
-    function showFullImage(src) {
-      const overlay = document.createElement('div');
-      overlay.style.cssText = `position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:3000;display:flex;justify-content:center;align-items:center;`;
-      const closeBtn = document.createElement('button');
-      closeBtn.innerHTML = '×';
-      closeBtn.style.cssText = `position:absolute;top:20px;right:20px;background:rgba(255,255,255,0.9);border:none;font-size:30px;width:40px;height:40px;border-radius:50%;cursor:pointer;color:#333;font-weight:bold;z-index:3001;`;
-      const img = document.createElement('img');
-      img.src = src;
-      img.style.maxWidth = '90%'; img.style.maxHeight = '90%';
-      overlay.appendChild(closeBtn);
-      overlay.appendChild(img);
-      closeBtn.onclick = () => overlay.remove();
-      overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
-      document.body.appendChild(overlay);
+  });
+  
+  // Search inputs
+  document.getElementById('searchCars').addEventListener('input', function(e) {
+    filterTable('carsTable', e.target.value, db.cars);
+  });
+  document.getElementById('searchKeys').addEventListener('input', function(e) {
+    filterTable('keysTable', e.target.value, db.keys);
+  });
+  document.getElementById('searchExpected').addEventListener('input', function(e) {
+    filterTable('expectedTable', e.target.value, db.expected);
+  });
+  
+  // Delegated event listeners for dynamically created buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('edit-btn')) {
+      const tableId = e.target.dataset.table;
+      const index = parseInt(e.target.dataset.index);
+      editEntry(tableId, index);
     }
-    // Edit an entry
-    function editEntry(tableId, idx) {
-      const key = tableId === 'carsTable' ? 'cars' : (tableId === 'keysTable' ? 'keys' : 'expected');
-      const item = db[key][idx];
-      const newNum = prompt('Edit number:', item.plate);
-      if (!newNum) return;
-      const digits = newNum.replace(/\D/g, '');
-      if (digits.length !== 8 || digits[0] === '0') { alert('Invalid number. Must be 8 digits and not start with 0.'); return; }
-      item.plate = formatPlateNumber(digits);
-      item.timestamp = new Date().toLocaleString();
-      saveDataToStorage();
-      updateTables();
+    if (e.target.classList.contains('delete-btn')) {
+      const tableId = e.target.dataset.table;
+      const index = parseInt(e.target.dataset.index);
+      deleteEntry(tableId, index);
     }
-    // Delete an entry
-    function deleteEntry(tableId, idx) {
-      const key = tableId === 'carsTable' ? 'cars' : (tableId === 'keysTable' ? 'keys' : 'expected');
-      if (confirm('Delete this entry?')) {
-        db[key].splice(idx, 1);
-        saveDataToStorage();
-        updateTables();
-      }
-    }
-    // Discard a section completely
-    function discardSection(section) {
-      if (confirm('Discard all items in this section?')) {
-        db[section] = [];
-        saveDataToStorage();
-        updateTables();
-      }
-    }
-    // Generate report page with counts
-    function generateReport() {
-      showScreen('reportScreen');
-      document.getElementById('reportCarsCount').textContent = db.cars.length;
-      document.getElementById('reportKeysCount').textContent = db.keys.length;
-      document.getElementById('reportExpectedCount').textContent = db.expected.length;
-      updateReadyStatus();
-    }
-    // Update the ready status in report
-    function updateReadyStatus() {
-      const readyEl = document.getElementById('readyStatus');
-      const ready = db.expected.length > 0;
-      readyEl.textContent = ready ? '(Ready)' : '(Not Ready)';
-      readyEl.style.color = ready ? '#4caf50' : '#f44336';
-      document.getElementById('discardBtn').style.display = ready ? 'inline-block' : 'none';
-    }
-    // Discard expected list
-    function discardExpectedList() {
-      if (confirm('Discard expected list?')) {
-        db.expected = [];
-        saveDataToStorage();
-        updateTables();
-        document.getElementById('resultsSection').style.display = 'none';
-        generateReport();
-      }
-    }
-    // Handle file selection
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = e => { parseExpectedList(file.name, e.target.result); };
-      if (/\.xlsx$|\.xls$/i.test(file.name)) reader.readAsBinaryString(file); else reader.readAsText(file);
-    }
-    // Trigger file input click
-    function uploadExpectedList() { document.getElementById('fileUpload').click(); }
-    // Parse expected list from file content
-    function parseExpectedList(filename, content) {
-      db.tempExpectedList = [];
-      if (/\.xlsx$|\.xls$/i.test(filename)) {
-        const workbook = XLSX.read(content, { type: 'binary' });
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-        rows.forEach(r => {
-          if (r[0]) {
-            const digits = String(r[0]).replace(/\D/g, '');
-            if (digits.length >= 8) db.tempExpectedList.push({ plate: formatPlateNumber(digits.substring(0,8)), timestamp: new Date().toLocaleString(), photo: '' });
-          }
-        });
-      } else {
-        const lines = content.split(/\r?\n/);
-        lines.forEach(l => {
-          const digits = l.replace(/\D/g, '');
-          if (digits.length >= 8) db.tempExpectedList.push({ plate: formatPlateNumber(digits.substring(0,8)), timestamp: new Date().toLocaleString(), photo: '' });
-        });
-      }
-      // Show review screen
-      showScreen('expectedResultsScreen');
-      document.getElementById('totalRecorded').textContent = db.tempExpectedList.length;
-      const listDiv = document.getElementById('recordedList');
-      listDiv.innerHTML = '';
-      db.tempExpectedList.forEach(item => { const p = document.createElement('p'); p.textContent = item.plate; listDiv.appendChild(p); });
-    }
-    // Confirm expected list after review
-    function confirmExpectedList() {
-      db.expected = db.tempExpectedList;
-      db.tempExpectedList = [];
-      saveDataToStorage();
-      updateTables();
-      generateReport();
-      showScreen('reportScreen');
-    }
-    // Retry uploading a different file
-    function retryExpectedUpload() {
-      db.tempExpectedList = [];
-      showScreen('reportScreen');
-    }
-    // Attempt comparison between expected and scanned
-    function attemptComparison() {
-      if (db.expected.length === 0) { alert('No expected list to compare.'); return; }
-      showComparisonResults();
-    }
-    // Compare expected vs found lists and populate resultsSection
-    function showComparisonResults() {
-      const summary = document.getElementById('comparisonSummary');
-      summary.innerHTML = '';
-      const expectedRaw = db.expected.map(i => i.plate.replace(/\D/g, ''));
-      const foundRaw    = db.cars.map(i => i.plate.replace(/\D/g, ''));
-      const missing = expectedRaw.filter(p => !foundRaw.includes(p));
-      const extras  = foundRaw.filter(p => !expectedRaw.includes(p));
-      const missingDiv = document.createElement('div');
-      missingDiv.innerHTML = '<h3>Missing Cars:</h3>' + (missing.length ? '<ul>' + missing.map(p => '<li>' + formatPlateNumber(p) + '</li>').join('') + '</ul>' : '<p>None</p>');
-      const extrasDiv  = document.createElement('div');
-      extrasDiv.innerHTML  = '<h3>Extra Cars:</h3>' + (extras.length ? '<ul>' + extras.map(p => '<li>' + formatPlateNumber(p) + '</li>').join('') + '</ul>' : '<p>None</p>');
-      summary.appendChild(missingDiv);
-      summary.appendChild(extrasDiv);
-      document.getElementById('resultsSection').style.display = 'block';
-    }
-    // Download results as Excel file
-    function emailResults() {
-      const rows = [];
-      rows.push(['Plate', 'Status']);
-      const expectedRaw = db.expected.map(i => i.plate.replace(/\D/g, ''));
-      const foundRaw    = db.cars.map(i => i.plate.replace(/\D/g, ''));
-      // Mark expected list
-      db.expected.forEach(item => {
-        const plain = item.plate.replace(/\D/g, '');
-        const status = foundRaw.includes(plain) ? 'Found' : 'Missing';
-        rows.push([item.plate, status]);
-      });
-      // Mark extras
-      foundRaw.forEach(raw => {
-        if (!expectedRaw.includes(raw)) rows.push([formatPlateNumber(raw), 'Extra']);
-      });
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      XLSX.utils.book_append_sheet(wb, ws, 'Results');
-      const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-      const blob = new Blob([wbout], { type: 'application/octet-stream' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'inventory_results.xlsx'; a.click();
-      URL.revokeObjectURL(url);
-    }
-  </script>
+  });
+}
+</script>
 </body>
 </html>
