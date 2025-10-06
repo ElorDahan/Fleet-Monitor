@@ -96,7 +96,7 @@
           <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardCars" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
         </div>
-        <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="8" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="carsTable">
             <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -109,7 +109,7 @@
           <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardKeys" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
         </div>
-        <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="8" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="keysTable">
             <thead><tr><th>Key Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -122,10 +122,10 @@
           <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardExpected" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
         </div>
-        <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="8" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="expectedTable">
-            <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Plate Number</th><th>Date/Time</th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -152,7 +152,7 @@
           <button id="uploadBtn" class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button>
         </div>
         <div id="compareSection" style="margin-top: 20px;">
-          <button id="compareBtn" class="btn btn-success-disabled" disabled>🔍 Compare</button>
+          <button id="compareBtn" class="btn btn-success">🔍 Compare</button>
         </div>
         <div id="resultsSection" style="display: none; margin-top: 30px;">
           <hr style="margin: 30px 0;">
@@ -487,25 +487,29 @@ function renderTable(tableId, data, countId) {
     const row = tbody.insertRow();
     row.insertCell(0).textContent = item.plate;
     row.insertCell(1).textContent = item.timestamp;
-    const photoCell = row.insertCell(2);
-    if (item.photo) {
-      const img = document.createElement('img');
-      img.src = item.photo;
-      img.style.width = '50px';
-      img.style.height = '30px';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '4px';
-      img.style.cursor = 'pointer';
-      img.onclick = () => showFullImage(item.photo);
-      photoCell.appendChild(img);
-    } else {
-      photoCell.textContent = 'No photo';
+    
+    // Expected table has no photo or actions columns
+    if (tableId !== 'expectedTable') {
+      const photoCell = row.insertCell(2);
+      if (item.photo) {
+        const img = document.createElement('img');
+        img.src = item.photo;
+        img.style.width = '50px';
+        img.style.height = '30px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '4px';
+        img.style.cursor = 'pointer';
+        img.onclick = () => showFullImage(item.photo);
+        photoCell.appendChild(img);
+      } else {
+        photoCell.textContent = 'No photo';
+      }
+      const actionsCell = row.insertCell(3);
+      actionsCell.innerHTML = `
+        <button class="action-btn edit-btn" data-table="${tableId}" data-index="${index}">Edit</button>
+        <button class="action-btn delete-btn" data-table="${tableId}" data-index="${index}">Delete</button>
+      `;
     }
-    const actionsCell = row.insertCell(3);
-    actionsCell.innerHTML = `
-      <button class="action-btn edit-btn" data-table="${tableId}" data-index="${index}">Edit</button>
-      <button class="action-btn delete-btn" data-table="${tableId}" data-index="${index}">Delete</button>
-    `;
   });
   document.getElementById(countId).textContent = data.length;
 }
@@ -541,7 +545,8 @@ function editEntry(tableId, index) {
   const item = db[dataType][index];
   const newPlate = prompt('Edit plate number:', item.plate);
   if (newPlate) {
-    const formatted = formatPlateNumber(newPlate);
+    const cleanInput = newPlate.replace(/\D/g, '');
+    const formatted = formatPlateNumber(cleanInput);
     if (validatePlateFormat(formatted)) {
       db[dataType][index].plate = formatted;
       saveDataToStorage();
@@ -581,23 +586,19 @@ function discardSection(section) {
 }
 
 function filterTable(tableId, searchValue, data) {
-  // Auto-format search with hyphens
+  // Auto-format search with hyphens as user types
   let cleanSearch = searchValue.replace(/\D/g, '');
-  let formattedSearch = '';
   
-  if (cleanSearch.length > 0) {
-    if (cleanSearch.length <= 2) {
-      formattedSearch = cleanSearch;
-    } else if (cleanSearch.length <= 5) {
-      // Could be XX-XXX or XXX-XX
-      formattedSearch = cleanSearch;
-    } else if (cleanSearch.length === 7) {
-      // XX-XXX-XX format
-      formattedSearch = cleanSearch.slice(0,2) + '-' + cleanSearch.slice(2,5) + '-' + cleanSearch.slice(5,7);
-    } else if (cleanSearch.length >= 8) {
-      // XXX-XX-XXX format
-      formattedSearch = cleanSearch.slice(0,3) + '-' + cleanSearch.slice(3,5) + '-' + cleanSearch.slice(5,8);
-    }
+  // Update the input field with formatted value
+  const inputId = tableId === 'carsTable' ? 'searchCars' : 
+                  tableId === 'keysTable' ? 'searchKeys' : 'searchExpected';
+  const inputField = document.getElementById(inputId);
+  
+  let formattedDisplay = formatPlateNumber(cleanSearch);
+  if (inputField.value !== formattedDisplay) {
+    const cursorPos = inputField.selectionStart;
+    inputField.value = formattedDisplay;
+    inputField.setSelectionRange(cursorPos, cursorPos);
   }
   
   const tbody = document.getElementById(tableId).querySelector('tbody');
@@ -615,26 +616,29 @@ function filterTable(tableId, searchValue, data) {
     row.insertCell(0).textContent = item.plate;
     row.insertCell(1).textContent = item.timestamp;
     
-    const photoCell = row.insertCell(2);
-    if (item.photo) {
-      const img = document.createElement('img');
-      img.src = item.photo;
-      img.style.width = '50px';
-      img.style.height = '30px';
-      img.style.objectFit = 'cover';
-      img.style.borderRadius = '4px';
-      img.style.cursor = 'pointer';
-      img.onclick = () => showFullImage(item.photo);
-      photoCell.appendChild(img);
-    } else {
-      photoCell.textContent = 'No photo';
+    // Expected table has no photo or actions
+    if (tableId !== 'expectedTable') {
+      const photoCell = row.insertCell(2);
+      if (item.photo) {
+        const img = document.createElement('img');
+        img.src = item.photo;
+        img.style.width = '50px';
+        img.style.height = '30px';
+        img.style.objectFit = 'cover';
+        img.style.borderRadius = '4px';
+        img.style.cursor = 'pointer';
+        img.onclick = () => showFullImage(item.photo);
+        photoCell.appendChild(img);
+      } else {
+        photoCell.textContent = 'No photo';
+      }
+      
+      const actionsCell = row.insertCell(3);
+      actionsCell.innerHTML = `
+        <button class="action-btn edit-btn" data-table="${tableId}" data-index="${originalIndex}">Edit</button>
+        <button class="action-btn delete-btn" data-table="${tableId}" data-index="${originalIndex}">Delete</button>
+      `;
     }
-    
-    const actionsCell = row.insertCell(3);
-    actionsCell.innerHTML = `
-      <button class="action-btn edit-btn" data-table="${tableId}" data-index="${originalIndex}">Edit</button>
-      <button class="action-btn delete-btn" data-table="${tableId}" data-index="${originalIndex}">Delete</button>
-    `;
   });
 }
 
@@ -644,12 +648,10 @@ function updateCompareButtonState() {
   const uploadBtn = document.getElementById('uploadBtn');
   
   if (db.expected.length > 0) {
-    compareBtn.disabled = false;
-    compareBtn.className = 'btn btn-success';
+    // Enable compare, disable upload
     uploadBtn.disabled = true;
   } else {
-    compareBtn.disabled = true;
-    compareBtn.className = 'btn btn-success-disabled';
+    // Enable upload
     uploadBtn.disabled = false;
   }
 }
@@ -898,24 +900,31 @@ function performComparison() {
     });
   }
   
+  // Extra scanned cars not in expected list
   for (let plate of scannedCars) {
     if (!expectedPlates.includes(plate)) {
+      const hasKey = scannedKeys.includes(plate);
+      let status = hasKey ? 
+        'Extra (not in expected list - car and key found)' : 
+        'Extra (not in expected list - only car found)';
+      
       results.push({
         plate: plate,
         car: 'V',
-        key: scannedKeys.includes(plate) ? 'V' : 'X',
-        status: 'Extra (not in expected list)'
+        key: hasKey ? 'V' : 'X',
+        status: status
       });
     }
   }
   
+  // Extra scanned keys not in expected list and not already counted with cars
   for (let plate of scannedKeys) {
     if (!expectedPlates.includes(plate) && !scannedCars.includes(plate)) {
       results.push({
         plate: plate,
         car: 'X',
         key: 'V',
-        status: 'Extra (not in expected list)'
+        status: 'Extra (not in expected list - only key found)'
       });
     }
   }
@@ -1005,7 +1014,7 @@ function setupEventListeners() {
   document.getElementById('btnCapture').addEventListener('click', capturePhoto);
   
   // Tables screen buttons
-  document.getElementById('btnBackFromTables').addEventListener('click', () => showScreen('tablesScreen'));
+  document.getElementById('btnBackFromTables').addEventListener('click', () => showScreen('homeScreen'));
   document.getElementById('btnDiscardCars').addEventListener('click', () => discardSection('cars'));
   document.getElementById('btnDiscardKeys').addEventListener('click', () => discardSection('keys'));
   document.getElementById('btnDiscardExpected').addEventListener('click', () => discardSection('expected'));
