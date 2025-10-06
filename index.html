@@ -12,14 +12,16 @@
     .container { max-width: 800px; margin: 0 auto; padding: 20px; }
     .screen { display: none; }
     .screen.active { display: block; }
-    .header { background: rgba(255,255,255,0.95); padding: 20px 60px 20px 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
+    .header { background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px; margin-bottom: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); position: relative; }
     .header h1 { color: #333; font-size: 20px; text-align: center; }
     .back-arrow { position: absolute; top: 15px; left: 15px; background: linear-gradient(45deg, #9c27b0, #7b1fa2); color: white; border: none; padding: 8px 12px; border-radius: 8px; font-size: 16px; cursor: pointer; box-shadow: 0 3px 10px rgba(156,39,176,0.3); }
     .btn { background: linear-gradient(45deg, #4FC3F7, #29B6F6); color: white; border: none; padding: 18px; border-radius: 12px; font-size: 18px; font-weight: 600; cursor: pointer; width: 100%; margin: 10px 0; box-shadow: 0 5px 15px rgba(79,195,247,0.3); transition: transform 0.2s; }
-    .btn:hover { transform: translateY(-2px); }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-secondary { background: linear-gradient(45deg, #9c27b0, #7b1fa2); }
     .btn-danger { background: linear-gradient(45deg, #f44336, #d32f2f); }
     .btn-success { background: linear-gradient(45deg, #4caf50, #388e3c); }
+    .btn-success-disabled { background: linear-gradient(45deg, #a5d6a7, #81c784); }
     .btn-warning { background: linear-gradient(45deg, #ff9800, #f57c00); }
     .card { background: rgba(255,255,255,0.95); padding: 20px; border-radius: 15px; margin: 10px 0; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
     #videoElement { width: 100%; border-radius: 10px; max-height: 400px; }
@@ -94,7 +96,7 @@
           <h3>Physical Cars (<span id="carsCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardCars" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Cars</button>
         </div>
-        <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchCars" placeholder="Search cars... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="carsTable">
             <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -107,7 +109,7 @@
           <h3>Physical Keys (<span id="keysCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardKeys" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard All Keys</button>
         </div>
-        <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchKeys" placeholder="Search keys... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="keysTable">
             <thead><tr><th>Key Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -120,7 +122,7 @@
           <h3>Expected Inventory (<span id="expectedCount">0</span>)</h3>
           <button class="btn btn-danger" id="btnDiscardExpected" style="padding: 8px 16px; font-size: 14px; width: auto; margin: 0;">🗑️ Discard Expected List</button>
         </div>
-        <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="10" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
+        <input type="text" id="searchExpected" placeholder="Search expected... (e.g., 12345678)" maxlength="9" inputmode="numeric" style="width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ddd;">
         <div style="overflow-x:auto;">
           <table id="expectedTable">
             <thead><tr><th>Plate Number</th><th>Date/Time</th><th>Photo</th><th>Actions</th></tr></thead>
@@ -131,7 +133,7 @@
     </div>
 
     <div id="reportScreen" class="screen">
-      <div class="header">
+      <div class="header" style="padding: 20px 20px 20px 60px;">
         <button class="back-arrow" id="btnBackFromReport">←</button>
         <h1>📊 Inventory Check</h1>
       </div>
@@ -150,7 +152,7 @@
           <button id="uploadBtn" class="btn" style="background: linear-gradient(45deg, #673ab7, #512da8);">📄 Upload Expected List (Excel/CSV/TXT)</button>
         </div>
         <div id="compareSection" style="margin-top: 20px;">
-          <button id="compareBtn" class="btn btn-success" style="cursor: pointer;">🔍 Compare</button>
+          <button id="compareBtn" class="btn btn-success-disabled" disabled>🔍 Compare</button>
         </div>
         <div id="resultsSection" style="display: none; margin-top: 30px;">
           <hr style="margin: 30px 0;">
@@ -188,7 +190,7 @@
       <h3 id="verificationTitle">Verify Number</h3>
       <img id="capturedImage" class="captured-image" style="display:none;">
       <p>Detected: <strong id="extractedText"></strong></p>
-      <input type="text" id="plateInput" placeholder="123-45-678" maxlength="10" inputmode="numeric">
+      <input type="text" id="plateInput" placeholder="12-345-67 or 123-45-678" maxlength="11" inputmode="numeric">
       <div class="modal-buttons">
         <button class="btn btn-success" id="btnConfirmPlate">✓ OK</button>
         <button class="btn btn-warning" id="btnRetake">📸 Retake</button>
@@ -314,14 +316,7 @@ async function capturePhoto() {
       }
       showLoading(false);
       let allDigits = text.replace(/\D/g, '');
-      let bestMatch = '';
-      for (let i = 0; i <= allDigits.length - 8; i++) {
-        let candidate = allDigits.substring(i, i + 8);
-        if (candidate[0] !== '0') {
-          bestMatch = candidate;
-          break;
-        }
-      }
+      let bestMatch = findBestPlateMatch(allDigits);
       document.getElementById('capturedImage').src = originalImage;
       document.getElementById('capturedImage').style.display = 'block';
       showVerificationModal(bestMatch, originalImage);
@@ -342,16 +337,7 @@ async function capturePhoto() {
         );
         detectedPlate = bestResult.plate.replace(/\D/g, '');
       }
-      let finalMatch = '';
-      if (detectedPlate.length >= 8) {
-        for (let i = 0; i <= detectedPlate.length - 8; i++) {
-          let candidate = detectedPlate.substring(i, i + 8);
-          if (candidate[0] !== '0') {
-            finalMatch = candidate;
-            break;
-          }
-        }
-      }
+      let finalMatch = findBestPlateMatch(detectedPlate);
       document.getElementById('capturedImage').src = originalImage;
       document.getElementById('capturedImage').style.display = 'block';
       showVerificationModal(finalMatch, originalImage);
@@ -363,15 +349,53 @@ async function capturePhoto() {
   }
 }
 
-// ========== VERIFICATION MODAL ==========
+// ========== PLATE FORMATTING FUNCTIONS ==========
+function findBestPlateMatch(digits) {
+  // Try to find 8-digit plate (XXX-XX-XXX)
+  if (digits.length >= 8) {
+    for (let i = 0; i <= digits.length - 8; i++) {
+      let candidate = digits.substring(i, i + 8);
+      if (candidate[0] !== '0') {
+        return candidate;
+      }
+    }
+  }
+  
+  // Try to find 7-digit plate (XX-XXX-XX)
+  if (digits.length >= 7) {
+    for (let i = 0; i <= digits.length - 7; i++) {
+      let candidate = digits.substring(i, i + 7);
+      if (candidate[0] !== '0') {
+        return candidate;
+      }
+    }
+  }
+  
+  return '';
+}
+
 function formatPlateNumber(text) {
   text = text.replace(/\D/g, '');
+  
+  // Format 8-digit plate: XXX-XX-XXX
   if (text.length >= 8) {
     return text.slice(0,3) + '-' + text.slice(3,5) + '-' + text.slice(5,8);
   }
+  
+  // Format 7-digit plate: XX-XXX-XX
+  if (text.length === 7) {
+    return text.slice(0,2) + '-' + text.slice(2,5) + '-' + text.slice(5,7);
+  }
+  
   return text;
 }
 
+function validatePlateFormat(plate) {
+  // Accept both 8-digit (XXX-XX-XXX) and 7-digit (XX-XXX-XX)
+  return /^\d{3}-\d{2}-\d{3}$/.test(plate) || /^\d{2}-\d{3}-\d{2}$/.test(plate);
+}
+
+// ========== VERIFICATION MODAL ==========
 function showVerificationModal(extracted, photo) {
   const formatted = formatPlateNumber(extracted);
   const titleText = currentScanType === 'cars' ? 'Verify Car Number' : 'Verify Key Number';
@@ -391,7 +415,7 @@ function confirmPlate() {
   let plate = document.getElementById('plateInput').value.trim();
   plate = formatPlateNumber(plate);
   if (!validatePlateFormat(plate)) {
-    alert('Invalid format! Need 8 digits.');
+    alert('Invalid format! Need 7 digits (XX-XXX-XX) or 8 digits (XXX-XX-XXX).');
     return;
   }
   if (plate[0] === '0') {
@@ -408,10 +432,6 @@ function retakePhoto() {
 function cancelScan() {
   document.getElementById('verificationModal').classList.remove('active');
   stopScanning();
-}
-
-function validatePlateFormat(plate) {
-  return /^\d{3}-\d{2}-\d{3}$/.test(plate);
 }
 
 function savePlate(plate) {
@@ -448,6 +468,7 @@ function updateScanCount() {
 
 function updateAllCounters() {
   updateTables();
+  updateCompareButtonState();
   if (currentScanType === 'cars' || currentScanType === 'keys') {
     updateScanCount();
   }
@@ -526,7 +547,7 @@ function editEntry(tableId, index) {
       saveDataToStorage();
       updateTables();
     } else {
-      alert('Invalid format! Need 8 digits in format XXX-XX-XXX');
+      alert('Invalid format! Need 7 digits (XX-XXX-XX) or 8 digits (XXX-XX-XXX)');
     }
   }
 }
@@ -537,6 +558,9 @@ function deleteEntry(tableId, index) {
     db[dataType].splice(index, 1);
     saveDataToStorage();
     updateTables();
+    if (dataType === 'expected') {
+      updateCompareButtonState();
+    }
   }
 }
 
@@ -550,15 +574,37 @@ function discardSection(section) {
     db[section] = [];
     saveDataToStorage();
     updateTables();
+    if (section === 'expected') {
+      updateCompareButtonState();
+    }
   }
 }
 
 function filterTable(tableId, searchValue, data) {
-  const cleanSearch = searchValue.replace(/\D/g, '');
+  // Auto-format search with hyphens
+  let cleanSearch = searchValue.replace(/\D/g, '');
+  let formattedSearch = '';
+  
+  if (cleanSearch.length > 0) {
+    if (cleanSearch.length <= 2) {
+      formattedSearch = cleanSearch;
+    } else if (cleanSearch.length <= 5) {
+      // Could be XX-XXX or XXX-XX
+      formattedSearch = cleanSearch;
+    } else if (cleanSearch.length === 7) {
+      // XX-XXX-XX format
+      formattedSearch = cleanSearch.slice(0,2) + '-' + cleanSearch.slice(2,5) + '-' + cleanSearch.slice(5,7);
+    } else if (cleanSearch.length >= 8) {
+      // XXX-XX-XXX format
+      formattedSearch = cleanSearch.slice(0,3) + '-' + cleanSearch.slice(3,5) + '-' + cleanSearch.slice(5,8);
+    }
+  }
+  
   const tbody = document.getElementById(tableId).querySelector('tbody');
   tbody.innerHTML = '';
   
   const filtered = data.filter(item => {
+    if (!cleanSearch) return true;
     const cleanPlate = item.plate.replace(/\D/g, '');
     return cleanPlate.includes(cleanSearch);
   });
@@ -593,6 +639,21 @@ function filterTable(tableId, searchValue, data) {
 }
 
 // ========== REPORT FUNCTIONS ==========
+function updateCompareButtonState() {
+  const compareBtn = document.getElementById('compareBtn');
+  const uploadBtn = document.getElementById('uploadBtn');
+  
+  if (db.expected.length > 0) {
+    compareBtn.disabled = false;
+    compareBtn.className = 'btn btn-success';
+    uploadBtn.disabled = true;
+  } else {
+    compareBtn.disabled = true;
+    compareBtn.className = 'btn btn-success-disabled';
+    uploadBtn.disabled = false;
+  }
+}
+
 function generateReport() {
   showScreen('reportScreen');
   document.getElementById('reportCarsCount').textContent = db.cars.length;
@@ -609,6 +670,7 @@ function generateReport() {
     document.getElementById('discardBtn').style.display = 'none';
   }
   document.getElementById('resultsSection').style.display = 'none';
+  updateCompareButtonState();
 }
 
 function uploadExpectedList() {
@@ -684,6 +746,7 @@ function extractPlatesFromText(text) {
   const allDigits = text.match(/\d+/g) || [];
   const plates = [];
   for (let digits of allDigits) {
+    // Try 8-digit first
     if (digits.length >= 8) {
       for (let i = 0; i <= digits.length - 8; i++) {
         const candidate = digits.substring(i, i + 8);
@@ -693,6 +756,15 @@ function extractPlatesFromText(text) {
             plates.push(formatted);
           }
           break;
+        }
+      }
+    }
+    // Try 7-digit if no 8-digit found
+    else if (digits.length === 7) {
+      if (digits[0] !== '0') {
+        const formatted = formatPlateNumber(digits);
+        if (!plates.includes(formatted)) {
+          plates.push(formatted);
         }
       }
     }
@@ -718,6 +790,11 @@ function extractPlatesFromCSV(text) {
             break;
           }
         }
+      } else if (digits.length === 7 && digits[0] !== '0') {
+        const formatted = formatPlateNumber(digits);
+        if (!plates.includes(formatted)) {
+          plates.push(formatted);
+        }
       }
     }
   }
@@ -741,6 +818,11 @@ function extractPlatesFromArray(data) {
               }
               break;
             }
+          }
+        } else if (digits.length === 7 && digits[0] !== '0') {
+          const formatted = formatPlateNumber(digits);
+          if (!plates.includes(formatted)) {
+            plates.push(formatted);
           }
         }
       }
@@ -810,8 +892,8 @@ function performComparison() {
     
     results.push({
       plate: plate,
-      car: hasCar ? 'Yes' : 'No',
-      key: hasKey ? 'Yes' : 'No',
+      car: hasCar ? 'V' : 'X',
+      key: hasKey ? 'V' : 'X',
       status: status
     });
   }
@@ -820,8 +902,8 @@ function performComparison() {
     if (!expectedPlates.includes(plate)) {
       results.push({
         plate: plate,
-        car: 'Yes',
-        key: scannedKeys.includes(plate) ? 'Yes' : 'No',
+        car: 'V',
+        key: scannedKeys.includes(plate) ? 'V' : 'X',
         status: 'Extra (not in expected list)'
       });
     }
@@ -831,8 +913,8 @@ function performComparison() {
     if (!expectedPlates.includes(plate) && !scannedCars.includes(plate)) {
       results.push({
         plate: plate,
-        car: 'No',
-        key: 'Yes',
+        car: 'X',
+        key: 'V',
         status: 'Extra (not in expected list)'
       });
     }
@@ -923,7 +1005,7 @@ function setupEventListeners() {
   document.getElementById('btnCapture').addEventListener('click', capturePhoto);
   
   // Tables screen buttons
-  document.getElementById('btnBackFromTables').addEventListener('click', () => showScreen('homeScreen'));
+  document.getElementById('btnBackFromTables').addEventListener('click', () => showScreen('tablesScreen'));
   document.getElementById('btnDiscardCars').addEventListener('click', () => discardSection('cars'));
   document.getElementById('btnDiscardKeys').addEventListener('click', () => discardSection('keys'));
   document.getElementById('btnDiscardExpected').addEventListener('click', () => discardSection('expected'));
@@ -951,28 +1033,41 @@ function setupEventListeners() {
   // Plate input auto-formatting
   document.getElementById('plateInput').addEventListener('input', function(e) {
     let value = e.target.value.replace(/\D/g, '');
+    
+    // Limit to 8 digits max
     if (value.length > 8) {
       value = value.substring(0, 8);
     }
+    
     let formatted = '';
-    if (value.length > 0) {
+    
+    // Format as XXX-XX-XXX (8 digits) or XX-XXX-XX (7 digits)
+    if (value.length <= 2) {
+      formatted = value;
+    } else if (value.length === 7) {
+      // XX-XXX-XX format
+      formatted = value.substring(0, 2) + '-' + value.substring(2, 5) + '-' + value.substring(5, 7);
+    } else if (value.length >= 3) {
+      // XXX-XX-XXX format (default for 8 digits or partial)
       formatted = value.substring(0, 3);
+      if (value.length >= 4) {
+        formatted += '-' + value.substring(3, 5);
+      }
+      if (value.length >= 6) {
+        formatted += '-' + value.substring(5, 8);
+      }
     }
-    if (value.length >= 4) {
-      formatted += '-' + value.substring(3, 5);
-    }
-    if (value.length >= 6) {
-      formatted += '-' + value.substring(5, 8);
-    }
+    
     const cursorPos = e.target.selectionStart;
     const oldValue = e.target.value;
     e.target.value = formatted;
+    
     if (formatted.length > oldValue.length && (formatted[cursorPos] === '-')) {
       e.target.setSelectionRange(cursorPos + 1, cursorPos + 1);
     }
   });
   
-  // Search inputs
+  // Search inputs with auto-hyphen display
   document.getElementById('searchCars').addEventListener('input', function(e) {
     filterTable('carsTable', e.target.value, db.cars);
   });
