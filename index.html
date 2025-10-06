@@ -377,14 +377,14 @@ function findBestPlateMatch(digits) {
 function formatPlateNumber(text) {
   text = text.replace(/\D/g, '');
   
-  // Format 8-digit plate: XXX-XX-XXX
-  if (text.length >= 8) {
-    return text.slice(0,3) + '-' + text.slice(3,5) + '-' + text.slice(5,8);
-  }
-  
-  // Format 7-digit plate: XX-XXX-XX
+  // Default to 8-digit format: XXX-XX-XXX
+  // Only use 7-digit format if exactly 7 digits
   if (text.length === 7) {
+    // Format 7-digit plate: XX-XXX-XX
     return text.slice(0,2) + '-' + text.slice(2,5) + '-' + text.slice(5,7);
+  } else if (text.length >= 8) {
+    // Format 8-digit plate: XXX-XX-XXX
+    return text.slice(0,3) + '-' + text.slice(3,5) + '-' + text.slice(5,8);
   }
   
   return text;
@@ -585,24 +585,36 @@ function discardSection(section) {
   }
 }
 
-function filterTable(tableId, searchValue, data) {
-  // Auto-format search with hyphens as user types
-  let cleanSearch = searchValue.replace(/\D/g, '');
+function formatSearchInput(value) {
+  // Remove all non-digits
+  let digits = value.replace(/\D/g, '');
   
-  // Update the input field with formatted value
-  const inputId = tableId === 'carsTable' ? 'searchCars' : 
-                  tableId === 'keysTable' ? 'searchKeys' : 'searchExpected';
-  const inputField = document.getElementById(inputId);
-  
-  let formattedDisplay = formatPlateNumber(cleanSearch);
-  if (inputField.value !== formattedDisplay) {
-    const cursorPos = inputField.selectionStart;
-    inputField.value = formattedDisplay;
-    inputField.setSelectionRange(cursorPos, cursorPos);
+  // Limit to 8 digits
+  if (digits.length > 8) {
+    digits = digits.substring(0, 8);
   }
   
+  // Format as XXX-XX-XXX (default 8-digit format)
+  let formatted = '';
+  if (digits.length > 0) {
+    formatted = digits.substring(0, 3);
+  }
+  if (digits.length >= 4) {
+    formatted += '-' + digits.substring(3, 5);
+  }
+  if (digits.length >= 6) {
+    formatted += '-' + digits.substring(5, 8);
+  }
+  
+  return formatted;
+}
+
+function filterTable(tableId, searchValue, data) {
   const tbody = document.getElementById(tableId).querySelector('tbody');
   tbody.innerHTML = '';
+  
+  // Get clean search digits for filtering
+  const cleanSearch = searchValue.replace(/\D/g, '');
   
   const filtered = data.filter(item => {
     if (!cleanSearch) return true;
@@ -1078,13 +1090,51 @@ function setupEventListeners() {
   
   // Search inputs with auto-hyphen display
   document.getElementById('searchCars').addEventListener('input', function(e) {
-    filterTable('carsTable', e.target.value, db.cars);
+    const formatted = formatSearchInput(e.target.value);
+    const cursorPos = e.target.selectionStart;
+    const oldLength = e.target.value.length;
+    e.target.value = formatted;
+    
+    // Adjust cursor position after formatting
+    if (formatted.length > oldLength) {
+      e.target.setSelectionRange(cursorPos + 1, cursorPos + 1);
+    } else {
+      e.target.setSelectionRange(cursorPos, cursorPos);
+    }
+    
+    filterTable('carsTable', formatted, db.cars);
   });
+  
   document.getElementById('searchKeys').addEventListener('input', function(e) {
-    filterTable('keysTable', e.target.value, db.keys);
+    const formatted = formatSearchInput(e.target.value);
+    const cursorPos = e.target.selectionStart;
+    const oldLength = e.target.value.length;
+    e.target.value = formatted;
+    
+    // Adjust cursor position after formatting
+    if (formatted.length > oldLength) {
+      e.target.setSelectionRange(cursorPos + 1, cursorPos + 1);
+    } else {
+      e.target.setSelectionRange(cursorPos, cursorPos);
+    }
+    
+    filterTable('keysTable', formatted, db.keys);
   });
+  
   document.getElementById('searchExpected').addEventListener('input', function(e) {
-    filterTable('expectedTable', e.target.value, db.expected);
+    const formatted = formatSearchInput(e.target.value);
+    const cursorPos = e.target.selectionStart;
+    const oldLength = e.target.value.length;
+    e.target.value = formatted;
+    
+    // Adjust cursor position after formatting
+    if (formatted.length > oldLength) {
+      e.target.setSelectionRange(cursorPos + 1, cursorPos + 1);
+    } else {
+      e.target.setSelectionRange(cursorPos, cursorPos);
+    }
+    
+    filterTable('expectedTable', formatted, db.expected);
   });
   
   // Delegated event listeners for dynamically created buttons
